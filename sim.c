@@ -10,16 +10,16 @@
 #include "simStats.h"
 #include "sim.h"
 #include "distribution.c"
-#include "procfile/procfile.h"
+#include "resource.h"
 
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
 // #define MIN(a,b) (((a)<(b))?(a):(b))
-#define DEFAULT_INPUT_FILE "input.txt"
+#define DEFAULT_INPUT_FILE "input/input.txt"
 #define DEFAULT_SIM_TIME 500
 
 enum DEADLOCK_ALG {
-	avoid = 0;
-	detect = 1;
+	avoid = 0,
+	detect = 1
 } algorithm;
 
 char* FILE_NAME;
@@ -43,13 +43,13 @@ void setINCR       () { INCR = 1; }
 /*
  * Default command-line arguments if unspecified by user.
  */
-void default(){
+void deflt() {
 	if (!SIM_TIME) {
 		setTIME(DEFAULT_SIM_TIME);
 		if (ENABLE_VERBOSE) { printf("Simulation will run for %d units.\n", SIM_TIME); }
 	}
 	if (FILE_NAME == NULL) { setFILE(DEFAULT_INPUT_FILE); }
-	if (ENABLE_VERBOSE)    { printf("Input file set to %s\n", FILE_NAME); }
+	if (ENABLE_VERBOSE)    { printf("Input file set to '%s'.\n", FILE_NAME); }
 }
 
 /*
@@ -57,7 +57,7 @@ void default(){
  * main if INCR = 1. Copied directly from a solution at
  * http://stackoverflow.com/questions/10575478/wait-for-user-input-in-c
  */
-int mygetch (void) {
+int mygetch(void) {
 	int ch;
 	struct termios oldt, newt;
 	tcgetattr (STDIN_FILENO, &oldt);
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
 	int jump; // keeps track of units of time between current and previous timestamps
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
-	exit();
+	exit(0);
 	read_input(FILE_NAME); // read input file and configure simulation
 
 	// ************************ INIT QUEUES & CLOCK ***************************
@@ -118,10 +118,10 @@ int main(int argc, char* argv[]) {
 
 	// *************************** RUN SIMULATION *****************************
 
-	if (SIM_TIME == 0) {
-		printf("Simulation time CANNOT be 0 or unspecified.\n
-			Please specify a simulation stop time and rerun the program with the -t flag.\n
-			Program terminated.\n");
+	if (SIM_STOP == 0) {
+		printf("Simulation time CANNOT be 0 or unspecified.\n");
+		printf("Please specify a simulation stop time and rerun the program with the -t flag.\n");
+		printf("Program terminated.\n");
 	} else {
 		while(c.time < SIM_TIME) { // SIM_TIME was specified by user
 			if (INCR) { printf("\n\nPress any key to advance time.\n\n"); mygetch(); }
@@ -129,13 +129,13 @@ int main(int argc, char* argv[]) {
 			if (ENABLE_VERBOSE) { printf("\nSystem time: %d\n", c.time); }
 			// if (ENABLE_VERBOSE) { printf("EVENT QUEUE: "); printPQ(event_q); }
 			Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
-			if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
+			// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 			switch(ev->type){
 				case 0: // creationEvent, put process on ready Queue
-					putProcOnReadyQ(ev->p, ready_q);
+					// putProcOnReadyQ(ev->p, ready_q);
 					break;
 				case 1: // process leaves system
-					proc_turnaround = leaveSystem(ev->p, &c, proc_stats);
+					// proc_turnaround = leaveSystem(ev->p, &c, proc_stats);
 					break;
 				case 2: // process gets killed
 					break;
@@ -153,17 +153,17 @@ int main(int argc, char* argv[]) {
 
 			////////////////////// HMMMM DO THIS
 
-			jump = advance_time(&c, event_q);
+			// jump = advance_time(&c, event_q);
 		}
 	}
-	int stop_time = system_time(&c) - jump;
+	// int stop_time = system_time(&c) - jump;
 
  	// ***************************** OUTPUT STATS *****************************
 
-	///////////////////// DO THIS TO
+	///////////////////// DO THIS TOO
 
 	printf("===================================================================================\n\nSimulation terminated.\n");
- }
+
 	// ******************************************************************************
 	//
 	//          TODO:  REMEMBER TO FREE MEMORY WE MALLOC!!
@@ -177,7 +177,7 @@ int main(int argc, char* argv[]) {
 void parse_args(int argc, char* argv[]) {
 	if (ENABLE_VERBOSE) { printf("Parsing command-line arguments...\n"); }
 	int opt = 0;
-	static struct option long_options[] = { /* These options set a flag. */
+	static struct option long_options[] = {
 		{"verbose",          no_argument, 0, 'v'},
 		{"sim-time",   required_argument, 0, 't'},
 		{"increment",        no_argument, 0, 'i'},
@@ -217,7 +217,8 @@ void parse_args(int argc, char* argv[]) {
 				setMODE(detect);
 				break;
 			default:
-				printf("Expects command-line arguments. See README for details.\n");
+				printf("^ See README for details.\nQuitting...\n");
+				exit(0);
 				break;
 		}
 	}
@@ -228,7 +229,7 @@ void parse_args(int argc, char* argv[]) {
 		printf("%s ", argv[optind++]);
 		printf("\n");
 	}
-	default();
+	deflt();
 }
 
 /*
