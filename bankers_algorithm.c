@@ -1,25 +1,61 @@
+/*
+* bankers_algorithm.c
+* Areeba Kamal and Helena Kleinschmidt
+* CS 322 Final Project
+*/ 
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <bankers_algorithm.h>
-#define numPrc 3
-#define numRes 3
+#define defaultPrc 3
+#define defaultRes 3
 
-int maxClaims[numPrc][numRes]; // index[i][j] holds max number of instances of resource j that process i can lay claim to  
-int currUse[numPrc][numRes]; // index[i][j] holds number of instances of resource j that process i currently holds  
-int available[numRes]; // index i holds number of instances of resource i available and currently not in use
-int unexecuted[numPrc]; // index i says whether process i has been executed yet or not
-int safeState[numPrc];
-int safe; 
-int processesLeft; 
+int ** maxClaims; 		// index[i][j] holds max number of instances of resource j that process i can lay claim to  
+int ** currUse;			// index[i][j] holds number of instances of resource j that process i currently holds 
+int * available; 		// index i holds number of instances of resource i available and currently not in use
+int * unexecuted; 		// index i says whether process i has been executed yet or not
+int * safeState;  		// holds safe sequence
 
+int numPrc = defaultPrc; // number of processes available
+int numRes = defaultRes; // number of resources available
+
+/**
+* Runs test files
+*/
 int main() {
 
-	initArrays();
-	test2(); 
-	initArrays();
 	test(); 
+	test2();
+}
+
+/**
+* Sets numPrc and numRes, mallocs memory for arrays, calls method to initialize them
+*/ 
+int setNumPrcRes(int setPrc, int setRes) {
+	
+	numPrc = setPrc; 
+	numRes = setRes;
+	int i, j, k, l;
+
+	maxClaims = (int**) malloc ( numPrc * sizeof(int *)); 
+	for(i = 0; i < numPrc; i++)
+		maxClaims[i] = (int*)malloc(numRes * sizeof(int));
+
+	currUse = (int**) malloc ( numPrc * sizeof(int *)); 
+	for(j = 0; j < numPrc; j++)
+		currUse[j] = (int*)malloc(numRes * sizeof(int));
+
+	available = (int*) malloc(numRes * sizeof(int));
+	unexecuted = (int*) malloc(numPrc * sizeof(int));
+	safeState = (int*) malloc(numPrc * sizeof(int));
+
+	initArrays();
 
 }
 
+/**
+* Initializes arrays
+*/
 void initArrays() {
 
 	int i, j, k, l, m; // initialize maxclaims and curr use to zero
@@ -42,18 +78,33 @@ void initArrays() {
 	}
 }
 
+/**
+* Find safe seq - test 1
+*/
 void test() {
 
+	// START BY CALLING THIS METHOD ALWAYS
+	setNumPrcRes(defaultPrc, defaultRes);
 	printf("\n\n Starting test 1:\n");
-	setMaxClaims(0, 1, 7, 5);
-	setMaxClaims(1, 0, 6, 5);
-	setMaxClaims(2, 0, 6, 5);
+	int mc1[] = {1, 7, 5};
+	int mc2[] = {0, 6, 5}; 
+	int mc3[] = {0, 6, 5}; 
 
-	setCurrUse(0, 1, 0, 0);
-	setCurrUse(1, 0, 6, 3); 
-	setCurrUse(2, 0, 0, 1);
+	setMaxClaims(0, mc1);
+	setMaxClaims(1, mc2);
+	setMaxClaims(2, mc3);
 
-	setAvailable(1, 5, 2);
+	int cu1[] = {1, 0, 0};
+	int cu2[] = {0, 6, 3}; 
+	int cu3[] = {0, 0, 1}; 
+
+	setCurrUse(0, cu1);
+	setCurrUse(1, cu2); 
+	setCurrUse(2, cu3);
+
+	int avb[] = {1, 5, 2};
+
+	setAvailable(avb);
 
 	readMaxClaims(); 
 	readCurrUse(); 
@@ -62,18 +113,33 @@ void test() {
 	return;
 }
 
+/**
+* Find safe seq - test 2
+*/
 void test2() {
 
+	setNumPrcRes(defaultPrc, defaultRes);
 	printf("\n\n Starting test 2:\n");
-	setMaxClaims(0, 5, 6, 7);
-	setMaxClaims(1, 3, 4, 5);
-	setMaxClaims(2, 0, 6, 5);
 
-	setCurrUse(0, 1, 0, 0);
-	setCurrUse(1, 0, 0, 0); 
-	setCurrUse(2, 4, 5, 6);
+	int mc1[] = {5, 6, 7};
+	int mc2[] = {3, 4, 5}; 
+	int mc3[] = {0, 6, 5}; 
 
-	setAvailable(1, 1, 1);
+	setMaxClaims(0, mc1);
+	setMaxClaims(1, mc2);
+	setMaxClaims(2, mc3);
+
+	int cu1[] = {1, 0, 0};
+	int cu2[] = {0, 0, 0}; 
+	int cu3[] = {4, 5, 6}; 
+
+	setCurrUse(0, cu1);
+	setCurrUse(1, cu2); 
+	setCurrUse(2, cu3);
+
+	int avb[] = {1, 1, 1};
+
+	setAvailable(avb);
 
 	readMaxClaims(); 
 	readCurrUse(); 
@@ -82,31 +148,42 @@ void test2() {
 	return;
 }
 
+/**
+* Setter method for max claims for a given process with ID pID
+*/
+void setMaxClaims(int pID, int maxR[]) {
 
-void setMaxClaims(int pID, int maxR0, int maxR1, int maxR2) {
-
-	maxClaims[pID][0] = maxR0; 
-	maxClaims[pID][1] = maxR1; 
-	maxClaims[pID][2] = maxR2; 
+	int i;
+	for(i = 0; i < numRes; i++)
+		maxClaims[pID][i] = maxR[i];
 	return; 
 }
 
-void setCurrUse(int pID, int currR0, int currR1, int currR2) {
+/**
+* Setter method for currUse for a given process with ID pID
+*/
+void setCurrUse(int pID, int maxU[]) {
 
-	currUse[pID][0] = currR0; 
-	currUse[pID][1] = currR1; 
-	currUse[pID][2] = currR2; 
+	int i;
+	for(i = 0; i < numRes; i++)
+		currUse[pID][i] = maxU[i];
 	return; 
 }
 
-void setAvailable(int avbR0, int avbR1, int avbR2) {
+/**
+* Setter method for number of available units of each resource
+*/
+void setAvailable(int avb[]) {
 
-	available[0] = avbR0; 
-	available[1] = avbR1; 
-	available[2] = avbR2; 
+	int i;
+	for(i = 0; i < numRes; i++)
+		available[i] = avb[i];
 	return; 
 }
 
+/**
+* Print max claims array
+*/ 
 void readMaxClaims() {
 
 	int i;
@@ -116,6 +193,9 @@ void readMaxClaims() {
 			printf("For process %d, maxClaims to resource %d are %d\n", i, j, maxClaims[i][j]);
 }
 
+/**
+* Print current use array
+*/ 
 void readCurrUse() {
 
 	int i; 
@@ -125,6 +205,9 @@ void readCurrUse() {
 			printf("For process %d, current use of resource %d are %d\n", i, j, currUse[i][j]);
 }
 
+/**
+* Print available array
+*/ 
 void readAvailable() {
 
 	int j;
@@ -132,16 +215,20 @@ void readAvailable() {
 		printf("For resource %d, number of available units are %d\n", j, available[j]);
 }
 
+/**
+* Execute bankers algorithm and find a safe sequence
+*/ 
 void runprocesses() {
 
 	int runningAProcess = 1; 
-	safe = 0; 
-	processesLeft = numPrc;
+	int safe = 0;
+	int processesLeft = numPrc;
 	while(processesLeft != 0) { // while all processes have not had their turn
 		safe = 0; // anticipate unsafe state, walk through executed processes, looking for a process to run next
 		int p, r;
 		for(p = 0; p < numPrc; p++) {// this loop will run as long as we don't execute all our processes
 			printf("Processes being executed is %d\n", p);
+
 			if(unexecuted[p]) { 			// if this process has not been run yet
 				runningAProcess = 1; 
 				for(r = 0; r < numRes; r++) { // check if it is safe to run
@@ -173,6 +260,9 @@ void runprocesses() {
 		printSafeSeq();
 }
 
+/**
+* Print safe sequence if one is found
+*/
 void printSafeSeq() {
 
 	printf("Safe sequence found!\nSafe sequence is:\n");
