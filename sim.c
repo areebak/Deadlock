@@ -72,6 +72,7 @@ int mygetch (void) {
 // ************************** FUNCTION DECLARATIONS ***************************
 
 void parse_args(int argc, char* argv[]);
+void read_input(char* file_name);
 // int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
 // int  randomExecTime(int len, int lower_bound);
 // int  randomFreq(int len, int lower_bound);
@@ -84,32 +85,12 @@ void parse_args(int argc, char* argv[]);
 // ********************************** MAIN ************************************
 
 int main(int argc, char* argv[]) {
-
 	printf("Initializing simulation...\n");
 	int i, index, jindex; // counters
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
+	read_input(FILE_NAME); // read input file and configure simulation
 
-	// ********************* READ INPUT FILE *********************
-
-	if (ENABLE_VERBOSE) { printf("Reading input file...\n"); }
-	FILE* fp = fopen(FILE_NAME, "r");
-
-	////////////////////////////////////////// THIS IS WHERE WE SET:
-		// - NUM_PROCS
-		// - RESRCS
-
-	// fscanf(fp, "%d", &NUM_PROC_TYPES);
-	// for (index = 0; index < NUM_PROC_TYPES; index++) {
-
-		/////////////////////////////////////// THIS IS WHERE WE SET:
-		// - 2d matrix representing max claims each process has on each resource
-		// - 2d matrix representing mean length of time between each process’ requests for each resource
-		// - 2d matrix representing length of time each process expects to retain each resource
-
-	// 	fscanf(fp, "%s %d %d %d %d",
-	// }
-	fclose(fp);
 
 	// ************************ INIT QUEUES & CLOCK ***************************
 
@@ -248,6 +229,30 @@ void parse_args(int argc, char* argv[]) {
 		printf("\n");
 	}
 	default();
+}
+
+/*
+ * Read input file and configure simulation accordingly.
+ */
+void read_input(char* file_name) {
+	if (ENABLE_VERBOSE) { printf("Reading input file...\n"); }
+	FILE* fp = fopen(file_name, "r");
+
+	////////////////////////////////////////// THIS IS WHERE WE SET:
+		// - NUM_PROCS
+		// - RESRCS
+
+	// fscanf(fp, "%d", &NUM_PROC_TYPES);
+	// for (index = 0; index < NUM_PROC_TYPES; index++) {
+
+		/////////////////////////////////////// THIS IS WHERE WE SET:
+		// - 2d matrix representing max claims each process has on each resource
+		// - 2d matrix representing mean length of time between each process’ requests for each resource
+		// - 2d matrix representing length of time each process expects to retain each resource
+
+	// 	fscanf(fp, "%s %d %d %d %d",
+	// }
+	fclose(fp);
 }
 
 // *************************** FUNCTION DEFINITIONS ***************************
