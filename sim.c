@@ -2,15 +2,15 @@
 // Areeba Kamal & Helena Kleinschmidt
 // Adapted from CPUscheduler/sim.c (Bach, Kleinschmidt, Zhumabekova)
 
-// #include <termios.h>
-// #include <unistd.h>
-// #include <getopt.h>
-// #include <string.h>
-// #include "clockSim.h"
-// #include "simStats.h"
-// #include "sim.h"
-// #include "distribution.c"
-// #include "procfile/procfile.h"
+#include <termios.h>
+#include <unistd.h>
+#include <getopt.h>
+#include <string.h>
+#include "clockSim.h"
+#include "simStats.h"
+#include "sim.h"
+#include "distribution.c"
+#include "procfile/procfile.h"
 
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
 // #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -87,10 +87,11 @@ void read_input(char* file_name);
 int main(int argc, char* argv[]) {
 	printf("Initializing simulation...\n");
 	int i, index, jindex; // counters
+	int jump; // keeps track of units of time between current and previous timestamps
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
+	exit();
 	read_input(FILE_NAME); // read input file and configure simulation
-
 
 	// ************************ INIT QUEUES & CLOCK ***************************
 
@@ -117,7 +118,6 @@ int main(int argc, char* argv[]) {
 
 	// *************************** RUN SIMULATION *****************************
 
-	int jump = 0;
 	if (SIM_TIME == 0) {
 		printf("Simulation time CANNOT be 0 or unspecified.\n
 			Please specify a simulation stop time and rerun the program with the -t flag.\n
