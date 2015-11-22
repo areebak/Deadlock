@@ -1,0 +1,3 @@
+2
+interactive 20 10 80 5
+batch 500 250 1000 10
