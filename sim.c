@@ -23,11 +23,13 @@ enum DEADLOCK_ALG {
 } algorithm;
 
 char* FILE_NAME;
+int   INCR; // 1 if user can run simulation step by step; 0 otherwise
 int   ENABLE_VERBOSE;
 int   SIM_TIME;
 int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection and recovery
 int   NUM_PROCS;
-int*  RESRCS;
+Resource* RESRCS;
+Process*  PROCESSES;
 
 /*
  * Configure parameters.
@@ -36,6 +38,7 @@ void setTIME  (int b) { SIM_TIME = b; }
 void setVERBOSE    () { ENABLE_VERBOSE = 1; }
 void setFILE(char *b) { FILE_NAME = b; }
 void setMODE  (int b) { MODE = b; }
+void setINCR       () { INCR = 1; }
 
 /*
  * Default command-line arguments if unspecified by user.
@@ -50,8 +53,9 @@ void default(){
 }
 
 /*
- * Waits for user to press key to continue program execution. Copied directly
- * from a solution at http://stackoverflow.com/questions/10575478/wait-for-user-input-in-c
+ * Waits for user to press key to continue program execution. Will only get called in
+ * main if INCR = 1. Copied directly from a solution at
+ * http://stackoverflow.com/questions/10575478/wait-for-user-input-in-c
  */
 int mygetch (void) {
 	int ch;
@@ -139,8 +143,7 @@ int main(int argc, char* argv[]) {
 			Program terminated.\n");
 	} else {
 		while(c.time < SIM_TIME) { // SIM_TIME was specified by user
-			// printf("\n\nPress any key to advance time.\n\n");
-			// mygetch();
+			if (INCR) { printf("\n\nPress any key to advance time.\n\n"); mygetch(); }
 			// int proc_turnaround = 0; // number of processes turned around
 			if (ENABLE_VERBOSE) { printf("\nSystem time: %d\n", c.time); }
 			// if (ENABLE_VERBOSE) { printf("EVENT QUEUE: "); printPQ(event_q); }
@@ -153,10 +156,12 @@ int main(int argc, char* argv[]) {
 				case 1: // process leaves system
 					proc_turnaround = leaveSystem(ev->p, &c, proc_stats);
 					break;
-				case 2: // process requests resource
+				case 2: // process gets killed
+					break;
+				case 3: // process requests resource
 					// ioService(event_q, ev->p, &c, cpu_stats);
 					break;
-				case 3: // process releases resource
+				case 4: // process releases resource
 					// putProcOnReadyQ(ev->p, ready_q);
 					break;
 				default:
@@ -194,6 +199,7 @@ void parse_args(int argc, char* argv[]) {
 	static struct option long_options[] = { /* These options set a flag. */
 		{"verbose",          no_argument, 0, 'v'},
 		{"sim-time",   required_argument, 0, 't'},
+		{"increment",        no_argument, 0, 'i'},
 		{"input-file", required_argument, 0, 'f'},
 		{"avoid",            no_argument, 0, 'a'},
 		{"detect",     required_argument, 0, 'd'},
@@ -201,7 +207,7 @@ void parse_args(int argc, char* argv[]) {
 	};
 	while(1) {
 		int option_index = 0;
-		opt = getopt_long(argc, argv, "vt:f:ad:", long_options, &option_index);
+		opt = getopt_long(argc, argv, "vt:if:ad:", long_options, &option_index);
 		if (opt == -1)
 		break;
 		switch (opt) {
@@ -212,6 +218,10 @@ void parse_args(int argc, char* argv[]) {
 			case 't':
 				printf("Simulator will run for %d time units.\n", atoi(optarg));
 				setTIME(atoi(optarg));
+				break;
+			case 'i':
+				printf("Simulation incrementing manually.\n");
+				setINCR();
 				break;
 			case 'f':
 				printf("Input filename: %s.\n", optarg);
