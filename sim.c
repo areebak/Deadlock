@@ -11,6 +11,7 @@
 #include "sim.h"
 #include "distribution.c"
 #include "resource.h"
+#include "bankers_algorithm.h"
 
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
 // #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -75,6 +76,8 @@ int mygetch(void) {
 
 void parse_args(int argc, char* argv[]);
 void read_input(char* file_name);
+void readResourceArray(); 
+void readProcessesArray(); 
 // int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
 // int  randomExecTime(int len, int lower_bound);
 // int  randomFreq(int len, int lower_bound);
@@ -94,6 +97,8 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
+	test(); 			   // bankers algorithm tests
+	test2(); 
 	exit(0);
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initPQ(); // <<<<<<<< INIT event queue
@@ -246,6 +251,7 @@ void read_input(char* file_name) {
 
 		while(fgets ( line, MAX_LENGTH_PT, file) != NULL) { // read a line
 
+			//printf("Read line %s\n", line);
 			if(lineNum == 0) // first line is number of processes
 			{ 
 				NUM_PROCS = atoi(line); 
@@ -259,30 +265,32 @@ void read_input(char* file_name) {
 				rtStart = riEnds; 
 				rtEnds = rtStart + NUM_PROCS; 
 
-				lineNum++ 
+				lineNum++; 
 			} 
 			else if(lineNum == 1) // second line is number of resources
 			{
 				NUM_RES = atoi(line); 
 				RESRCS = malloc(NUM_RES * sizeof(Resource*)); 
 				printf("Num resources is %d\n", NUM_RES);
-				lineNum++ 
+				lineNum++; 
 			} 
 			else if(lineNum == 2) // third line is number of instances of each resource
 			{
-				int index0; // keep track of which index of resource array we are at, 
-				char* numInst;
+				int index0 = 0; // keep track of which index of resource array we are at, 
+				char* numResInst;
 				for(numResInst = strtok(line, " "); numResInst != NULL; numResInst = strtok(NULL, " ")) 
 				{
-					for( index0 = 0; index0 < NUM_RES; index0++) 
-					{
+					//for( index0 = 0; index0 < NUM_RES; index0++) 
+					//{
+						//printf("line number is %d and numResInst is %d\n", lineNum, numResInst);
 						Resource* RS = malloc(sizeof(Resource)); 
 						RS->type = index0; 
 						RS->total_inst = atoi(numResInst);
 						RS->available = atoi(numResInst); 
 						RS->request_q = initQ();
-						RESRCS[index0] = *RS; 
-					}
+						RESRCS[index0] = RS; 
+						index0++;
+					//}
 				} 
 				lineNum++;  
 			} 
@@ -292,39 +300,43 @@ void read_input(char* file_name) {
 				Process* PR = malloc(sizeof(Process)); // create new process
 				PROCESSES[index1] = PR; 
 				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
-				int i; 
+				int i = 0; 
 				char* numMC; // read line
 				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) 
 				{
-					for(i = 0; i < NUM_RES; i++) 
-						max_claims[i] = atoi(numMC); // store maxClaims array
+					//for(i = 0; i < NUM_RES; i++) 
+					max_claims[i] = atoi(numMC); // store maxClaims array
+					i++;
 				} 
 				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
 				lineNum++;  // go to next line
 			} 
 			else if(lineNum >= riStart && lineNum < riEnds) // lines relevant to request intervals for each resource - each line specifies req_intervals array for one process
 			{
-				int index2 = lineNum - mlStart; 
+				int index2 = lineNum - riStart; 
 				int* req_intervals = malloc(sizeof(int) * NUM_RES);
-				int j; 
+				int j = 0; 
 				char* numRI;
-				for(numRI = strtok(line, " "); numRI != NULL; numRI = strtok(NULL, " ")) {
-					for(j = 0; j < NUM_RES; j++) {
+				for(numRI = strtok(line, " "); numRI != NULL; numRI = strtok(NULL, " ")) 
+				{
+					//for(j = 0; j < NUM_RES; j++) {
 						req_intervals[j] = atoi(numRI); 
-					}
+						j++;
+					//}
 				} PROCESSES[index2]->req_intervals = req_intervals; 
 				lineNum++; 
 			} 
 			else if(lineNum >= rtStart && lineNum < rtEnds) // lines relevant to retain times for each resource - each line holds retain_time array for one process
 			{ 
-				int index3 = lineNum - ltStart; 
+				int index3 = lineNum - rtStart; 
 				int* retain_time = malloc(sizeof(int) * NUM_RES);
-				int k; 
+				int k = 0; 
 				char* numRT;
 				for(numRT = strtok(line, " "); numRT != NULL; numRT = strtok(NULL, " ")) {
-					for(k = 0; k < NUM_RES; k++) {
+					//for(k = 0; k < NUM_RES; k++) {
 						retain_time[k] = atoi(numRT); 
-					}
+						k++;
+					//}
 				}
 				PROCESSES[index3]->retain_time = retain_time; 
 				lineNum++; 
@@ -340,14 +352,15 @@ void read_input(char* file_name) {
 void readResourceArray() {
 	int a; 
 	for(a = 0; a < NUM_RES; a++)
-		printf("Resource Type: %d, with total instances %d and available instances %d\n", RESRCS[i]->type, RESRCS->total_inst, RESRCS->available); 
+		printf("Resource Type: %d, with total instances %d and available instances %d\n", RESRCS[a]->type, RESRCS[a]->total_inst, RESRCS[a]->available); 
 }
 
 void readProcessesArray() {
 	int b, c; 
 
-	for(b = 0; b < NUM_PROCS; b++) {
-		printf("Process at index: %d", b);  
+	for(b = 0; b < NUM_PROCS; b++) 
+	{
+		printf("Process at index: %d\n", b);  
 		for( c = 0; c < NUM_RES; c++) 
 			printf("has, for R%d, max claims %d, request interval %d and retain time %d\n", c, PROCESSES[b]->max_claims[c], PROCESSES[b]->req_intervals[c], PROCESSES[b]->retain_time[c]);
 	}
@@ -418,7 +431,7 @@ void readProcessesArray() {
 
 
 	//fclose(fp);
-}
+
 
 // *************************** FUNCTION DEFINITIONS ***************************
 

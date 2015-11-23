@@ -15,10 +15,12 @@ Process* createProc(int exec_time, int* max_claims, int num_resrcs, int* req_int
 	p->retain_time = retain_time;
 
 	// init currUse
-	p->curr_use = malloc(sizeof(int) * num_resrcs);
+	int* curr_use = malloc(sizeof(int) * num_resrcs);
 	int i; 
 	for(i = 0; i < num_resrcs; i++)
 		curr_use[i] = 0; 
+
+	p->curr_use = curr_use;
 	
 	return p;
 }
@@ -34,4 +36,4 @@ Process* createProc(int exec_time, int* max_claims, int num_resrcs, int* req_int
 // if n bw mcends and mlends (n - mcends)
 // break line, feed into mean lenth
 // if n bw mlends and ltends  (n - mlends)
-// break line, feed into length of time
+// break line, feed into length of time*/

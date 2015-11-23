@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <bankers_algorithm.h>
+#include "bankers_algorithm.h"
 #define defaultPrc 3
 #define defaultRes 3
 
@@ -21,12 +21,12 @@ int numRes = defaultRes; // number of resources available
 
 /**
 * Runs test files
-*/
+*
 int main() {
 
 	test(); 
 	test2();
-}
+}*/
 
 /**
 * Sets numPrc and numRes, mallocs memory for arrays, calls method to initialize them
@@ -106,9 +106,9 @@ void test() {
 
 	setAvailable(avb);
 
-	readMaxClaims(); 
-	readCurrUse(); 
-	readAvailable(); 
+	//readMaxClaims(); 
+	//readCurrUse(); 
+	//readAvailable(); 
 	runprocesses();
 	return;
 }
@@ -141,9 +141,9 @@ void test2() {
 
 	setAvailable(avb);
 
-	readMaxClaims(); 
-	readCurrUse(); 
-	readAvailable(); 
+	//readMaxClaims(); 
+	//readCurrUse(); 
+	//readAvailable(); 
 	runprocesses();
 	return;
 }
