@@ -28,8 +28,8 @@ int   ENABLE_VERBOSE;
 int   SIM_TIME;
 int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection and recovery
 int   NUM_PROCS;
-Resource* RESRCS;
-Process*  PROCESSES;
+Resource** RESRCS;
+Process**  PROCESSES;
 
 /*
  * Configure parameters.
@@ -90,31 +90,19 @@ int main(int argc, char* argv[]) {
 	int jump; // keeps track of units of time between current and previous timestamps
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
-	exit(0);
 	read_input(FILE_NAME); // read input file and configure simulation
-
-	// ************************ INIT QUEUES & CLOCK ***************************
-
-	ClockSim c = clockSim;
-	PQueue_STRUCT* event_q = initPQ();
-
-	//////////////////////// THIS IS WHERE WE INITIALIZE THE WAITING QUEUES FOR EACH RESOURCE
-
-	// Queue_STRUCT* ready_q = initQ();
+	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<< INIT clock
+	PQueue_STRUCT* event_q = initPQ(); // <<<<<<<< INIT event queue
 
 	// ***************************** INIT STATS *******************************
 
-	/////////////////////////// INIT STATS OBJECTS
-	// QStats*        qstats = (QStats*)malloc(sizeof(QStats));
+	// insert initial process creation event into event Queue
 
-		// insert initial process creation event into event Queue
+	///////////////////////////////////////
+	// begin by surveying the first claim that each process has on a resource and generate
+	// a request event for that process and that resource, with a timestamp randomly generated
 
-		///////////////////////////////////////
-		// begin by surveying the first claim that each process has on a resource and generate
-		// a request event for that process and that resource, with a timestamp randomly generated
-
-		// createAndEnqueueEvent(event_q, newProcess(&proc_types[i], 0), 0, 0, cpu_stats);
-	// }
+	// createAndEnqueueEvent(event_q, newProcess(&proc_types[i], 0), 0, 0, cpu_stats);
 
 	// *************************** RUN SIMULATION *****************************
 
