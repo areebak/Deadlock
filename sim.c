@@ -16,6 +16,7 @@
 // #define MIN(a,b) (((a)<(b))?(a):(b))
 #define DEFAULT_INPUT_FILE "input.txt"
 #define DEFAULT_SIM_TIME 500
+#define MAX_LENGTH_PT 100
 
 enum DEADLOCK_ALG {
 	avoid = 0;
@@ -28,8 +29,9 @@ int   ENABLE_VERBOSE;
 int   SIM_TIME;
 int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection and recovery
 int   NUM_PROCS;
-Resource* RESRCS;
-Process*  PROCESSES;
+int   NUM_RES; 
+Resource** RESRCS;
+Process**  PROCESSES;
 
 /*
  * Configure parameters.
@@ -85,13 +87,14 @@ void read_input(char* file_name);
 // ********************************** MAIN ************************************
 
 int main(int argc, char* argv[]) {
+
 	printf("Initializing simulation...\n");
 	int i, index, jindex; // counters
 	int jump; // keeps track of units of time between current and previous timestamps
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
-	exit();
 	read_input(FILE_NAME); // read input file and configure simulation
+	exit(0);
 
 	// ************************ INIT QUEUES & CLOCK ***************************
 
@@ -235,10 +238,175 @@ void parse_args(int argc, char* argv[]) {
  * Read input file and configure simulation accordingly.
  */
 void read_input(char* file_name) {
-	if (ENABLE_VERBOSE) { printf("Reading input file...\n"); }
-	FILE* fp = fopen(file_name, "r");
 
-	////////////////////////////////////////// THIS IS WHERE WE SET:
+	if (ENABLE_VERBOSE) { printf("Reading input file...\n"); }
+
+	FILE* file = fopen(file_name, "r");
+	char line [MAX_LENGTH_PT];  // max length of a file
+	int lineNum = 0; 
+
+	if(file != NULL) {
+
+		// vars to help track line number 
+		int mcStart = 3; // beginning of line numbers specifying max claims
+		int mcEnds; 	 // end of line numbers specifying max claims
+		int riStart; 	 // beginning of line numbers specifying mean length of time a process holds resource
+		int riEnds; 	 // end of line numbers specifying request intervals between process asking for resource 
+		int rtStart;	 // beginning of line numbers specifying length of time process retains resource
+		int rtEnds; 	 // beginning of line numbers specifying length of time process retains resource
+
+		while(fgets ( line, MAX_LENGTH_PT, file) != NULL) { // read a line
+
+			if(lineNum == 0) // first line is number of processes
+			{ 
+				NUM_PROCS = atoi(line); 
+				PROCESSES = malloc(NUM_PROCS * sizeof(Process*)); 
+				printf("Num processes is %d\n", NUM_PROCS);
+				
+				// init index vars since we know num procs
+				mcEnds = mcStart + NUM_PROCS; 
+				riStart = mcEnds; 
+				riEnds = riStart + NUM_PROCS; 
+				rtStart = riEnds; 
+				rtEnds = rtStart + NUM_PROCS; 
+
+				lineNum++ 
+			} 
+			else if(lineNum == 1) // second line is number of resources
+			{
+				NUM_RES = atoi(line); 
+				RESRCS = malloc(NUM_RES * sizeof(Resource*)); 
+				printf("Num resources is %d\n", NUM_RES);
+				lineNum++ 
+			} 
+			else if(lineNum == 2) // third line is number of instances of each resource
+			{
+				int index0; // keep track of which index of resource array we are at, 
+				char* numInst;
+				for(numResInst = strtok(line, " "); numResInst != NULL; numResInst = strtok(NULL, " ")) 
+				{
+					for( index0 = 0; index0 < NUM_RES; index0++) 
+					{
+						Resource* RS = malloc(sizeof(Resource)); 
+						RS->type = index0; 
+						RS->total_inst = atoi(numResInst);
+						RS->available = atoi(numResInst); 
+						RS->request_q = initQ();
+						RESRCS[index0] = *RS; 
+					}
+				} 
+				lineNum++;  
+			} 
+			else if(lineNum >= mcStart && lineNum < mcEnds)  // lines relevant to maxclaims for each resource - each line specifies max claims array for one process
+			{
+				int index1 = lineNum - mcStart; 
+				Process* PR = malloc(sizeof(Process)); // create new process
+				PROCESSES[index1] = PR; 
+				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
+				int i; 
+				char* numMC; // read line
+				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) 
+				{
+					for(i = 0; i < NUM_RES; i++) 
+						max_claims[i] = atoi(numMC); // store maxClaims array
+				} 
+				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
+				lineNum++;  // go to next line
+			} 
+			else if(lineNum >= riStart && lineNum < riEnds) // lines relevant to request intervals for each resource - each line specifies req_intervals array for one process
+			{
+				int index2 = lineNum - mlStart; 
+				int* req_intervals = malloc(sizeof(int) * NUM_RES);
+				int j; 
+				char* numRI;
+				for(numRI = strtok(line, " "); numRI != NULL; numRI = strtok(NULL, " ")) {
+					for(j = 0; j < NUM_RES; j++) {
+						req_intervals[j] = atoi(numRI); 
+					}
+				} PROCESSES[index2]->req_intervals = req_intervals; 
+				lineNum++; 
+			} 
+			else if(lineNum >= rtStart && lineNum < rtEnds) // lines relevant to retain times for each resource - each line holds retain_time array for one process
+			{ 
+				int index3 = lineNum - ltStart; 
+				int* retain_time = malloc(sizeof(int) * NUM_RES);
+				int k; 
+				char* numRT;
+				for(numRT = strtok(line, " "); numRT != NULL; numRT = strtok(NULL, " ")) {
+					for(k = 0; k < NUM_RES; k++) {
+						retain_time[k] = atoi(numRT); 
+					}
+				}
+				PROCESSES[index3]->retain_time = retain_time; 
+				lineNum++; 
+			}
+		} 
+
+		readResourceArray(); 
+		readProcessesArray(); 
+		fclose(file);
+	}
+}
+
+void readResourceArray() {
+	int a; 
+	for(a = 0; a < NUM_RES; a++)
+		printf("Resource Type: %d, with total instances %d and available instances %d\n", RESRCS[i]->type, RESRCS->total_inst, RESRCS->available); 
+}
+
+void readProcessesArray() {
+	int b, c; 
+
+	for(b = 0; b < NUM_PROCS; b++) {
+		printf("Process at index: %d", b);  
+		for( c = 0; c < NUM_RES; c++) 
+			printf("has, for R%d, max claims %d, request interval %d and retain time %d\n", c, PROCESSES[b]->max_claims[c], PROCESSES[b]->req_intervals[c], PROCESSES[b]->retain_time[c]);
+	}
+}
+
+
+
+
+	/*     FILE *file = fopen( filename, "r" );
+    //maximum length of a line
+    char line [MAX_LENGTH_PT]; .
+    //what line we're at
+    int n = 0;
+    int index = 0; 
+    //make sure file isn't null .
+    if (file != NULL) {
+        //read a line - line acts as a buffer that stores the word currently being read from the file
+        while ( fgets ( line, MAX_LENGTH_PT, file ) != NULL ) {
+            if (n == 0) {
+                numProcs = atoi(line);
+                PT = malloc(numProcs * sizeof(processTypes_t));
+                printf("%f\n", numProcs);
+                n++;
+            } else {
+                //create a Process Type for each line of the file (except for the first) and allocate memory space for it
+                processTypes_t* PT1 = malloc(sizeof(processTypes_t));
+                int count = 0; // number of tokens
+                char* p; 
+                for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")) {
+                    if (count == 0)
+                        PT1->processType = atoi(p);
+                    else if (count == 1)
+                        PT1->CPUtime = atoi(p);
+                    else if (count == 2)
+                        PT1->IOTime = atoi(p);
+                    else if (count == 3)
+                        PT1->interATime = atoi(p);
+                    else if (count == 4)
+                        PT1->burstTime = atoi(p);
+                    count++;
+                } 
+                PT[index] = *PT1;
+                n++;
+                index++;
+            }
+        } fclose ( file );
+    } */
+        	////////////////////////////////////////// THIS IS WHERE WE SET:
 		// - NUM_PROCS
 		// - RESRCS
 
@@ -252,7 +420,15 @@ void read_input(char* file_name) {
 
 	// 	fscanf(fp, "%s %d %d %d %d",
 	// }
-	fclose(fp);
+
+
+
+
+
+
+
+
+	//fclose(fp);
 }
 
 // *************************** FUNCTION DEFINITIONS ***************************
