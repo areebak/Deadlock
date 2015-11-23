@@ -1,4 +1,4 @@
 all: sim
 
-sim: sim.c PQQ/pqueue.c PQQ/event.c PQQ/queue.c simStats.c PQQ/process.c
-	gcc -o sim sim.c PQQ/pqueue.c PQQ/event.c PQQ/queue.c simStats.c PQQ/process.c -I.
+sim: sim.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c
+	gcc -o sim sim.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c -I.

@@ -6,7 +6,7 @@
 #ifndef SimSTATS_H
 #define SimSTATS_H
 
-#include "PQQ/pqueue.h"
+#include "qs/pqueue.h"
 
 typedef struct QStats {
 	int fin_len_q;
