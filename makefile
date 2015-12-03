@@ -1,4 +1,4 @@
 all: sim
 
-sim: sim.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c
-	gcc -o sim sim.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c -I.
+sim: sim.c bankers_algorithm.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c
+	gcc -o sim bankers_algorithm.c sim.c qs/pqueue.c qs/event.c qs/queue.c simStats.c qs/process.c -I.
