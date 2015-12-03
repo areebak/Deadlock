@@ -27,7 +27,7 @@ int   INCR; // 1 if user can run simulation step by step; 0 otherwise
 int   ENABLE_VERBOSE;
 int   SIM_TIME;
 int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection and recovery
-int   NUM_PROCS;
+// int   NUM_PROCS;
 Resource** RESRCS;
 Process**  PROCESSES;
 
@@ -78,7 +78,7 @@ void read_input(char* file_name);
 // int  randomFreq(int len, int lower_bound);
 // int  leaveSystem(Process* p, ClockSim* c, ProcStats* proc_stats);
 // int  system_time(ClockSim* c);
-// void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type, CPUStats* cpu_stats);
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type);
 // Process* newProcess(Procfile* proc_type, int timestamp);
 // Process* genRemovalEventForProc(PQueue_STRUCT* event_q, Process* p, ClockSim* c, CPU_STRUCT* cpu,CPUStats* cpu_stats);
 
@@ -102,7 +102,24 @@ int main(int argc, char* argv[]) {
 	// begin by surveying the first claim that each process has on a resource and generate
 	// a request event for that process and that resource, with a timestamp randomly generated
 
-	// createAndEnqueueEvent(event_q, newProcess(&proc_types[i], 0), 0, 0, cpu_stats);
+	// p->exec_time = exec_time;
+	// p->max_claims = max_claims;
+	// p->curr_use = malloc(sizeof(int) * num_resrcs);
+	// p->req_intervals = req_intervals;
+	// p->retain_time = retain_time;
+
+	// So for each p let us make the simplifying assumption that it requests max_claims
+	// of each resource at the interval, and up the current use to max_claims
+	// we can make this more accurate/nuanced later
+	// and we say that retain time is the same for all of them
+
+	// for each process, for each resource
+
+	for (i = 0; i < len(PROCESSES); i++) {
+		for (index = 0; index < len(RESRCS); index++) {
+			createAndEnqueueEvent(event_q, newProcess(&proc_types[i], 0), 0, 3);
+		}
+	}
 
 	// *************************** RUN SIMULATION *****************************
 
@@ -329,11 +346,10 @@ void read_input(char* file_name) {
 // 	return proc;
 // }
 
-// /*
-//  * Creates new event and enqueues in event queue.
-//  */
-// void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type, CPUStats* cpu_stats) {
-// 	enqueuePQ(event_q, createEvent(proc, timestamp, type));
-// 	if (ENABLE_VERBOSE) { printf("%d(%d) should appear in event queue.\n", timestamp, type); }
-// 	if(CONTEXT_SWITCH_COST){cpu_stats->contxt_sw_time += CONTEXT_SWITCH_COST;}
-// }
+/*
+ * Creates new event and enqueues in event queue.
+ */
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type) {
+	enqueuePQ(event_q, createEvent(proc, timestamp, type));
+	// if (ENABLE_VERBOSE) { printf("%d(%d) should appear in event queue.\n", timestamp, type); }
+}
