@@ -4,10 +4,10 @@
 
 #include "event.h"
 
-Event* createEvent(Process* p, int resrc, int timestamp, int type) {
+Event* createEvent(Process* proc, Resource* res, int timestamp, int type) {
 	Event* ev = malloc(sizeof(Event));
-	ev->p = p;
-	ev->resrc = resrc;
+	ev->proc = proc;
+	ev->res = res;
 	ev->timestamp = timestamp;
 	ev->type = type;
 	return ev;

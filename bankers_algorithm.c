@@ -170,6 +170,7 @@ void setCurrUse(int pID, int maxU[]) {
 	return; 
 }
 
+
 /**
 * Setter method for number of available units of each resource
 */

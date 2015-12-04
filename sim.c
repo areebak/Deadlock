@@ -10,8 +10,10 @@
 #include "simStats.h"
 #include "sim.h"
 #include "distribution.c"
-#include "resource.h"
+#include "qs/queue.h"
 #include "bankers_algorithm.h"
+#include "qs/event.h"
+
 
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
 // #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -78,12 +80,20 @@ void parse_args(int argc, char* argv[]);
 void read_input(char* file_name);
 void readResourceArray(); 
 void readProcessesArray(); 
-// int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
+int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
+void initEventQueue(PQueue_STRUCT* event_q);
 // int  randomExecTime(int len, int lower_bound);
 // int  randomFreq(int len, int lower_bound);
 // int  leaveSystem(Process* p, ClockSim* c, ProcStats* proc_stats);
-// int  system_time(ClockSim* c);
-void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type);
+int  system_time(ClockSim* c);
+int requestResource(Process* proc, Resource* res);
+void claimResource(Process* proc, Resource* res);
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type);
+void releaseResource(Process* proc, Resource* res); 
+void activateProcess(Process* proc);
+void deactivateProcess(Process* proc);
+
+
 // Process* newProcess(Procfile* proc_type, int timestamp);
 // Process* genRemovalEventForProc(PQueue_STRUCT* event_q, Process* p, ClockSim* c, CPU_STRUCT* cpu,CPUStats* cpu_stats);
 
@@ -97,45 +107,25 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
-	test(); 			   // bankers algorithm tests
-	test2(); 
-	exit(0);
+	// test(); 			   // bankers algorithm tests
+	// test2(); 
+	//exit(0);
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initPQ(); // <<<<<<<< INIT event queue
+
+	// for each process, generate request event at time 0 for each resource type
+	// for (i = 0; i < len(PROCESSES); i++) {
+	// 	for (index = 0; index < len(RESRCS); index++) {
+	// 		createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[index], 0, 0); // type 0 is create
+	// 	}
+	// }
+
+	initEventQueue(event_q);
+
 	// ***************************** INIT STATS *******************************
-
-	// insert initial process creation event into event Queue
-
-	///////////////////////////////////////
-	// begin by surveying the first claim that each process has on a resource and generate
-	// a request event for that process and that resource, with a timestamp randomly generated
-
-	// p->exec_time = exec_time;
-	// p->max_claims = max_claims;
-	// p->curr_use = malloc(sizeof(int) * num_resrcs);
-	// p->req_intervals = req_intervals;
-	// p->retain_time = retain_time;
-
-	// So for each p let us make the simplifying assumption that it requests max_claims
-	// of each resource at the interval, and up the current use to max_claims
-	// we can make this more accurate/nuanced later
-	// and we say that retain time is the same for all of them
-
-	// for each process, for each resource
-
-	for (i = 0; i < len(PROCESSES); i++) {
-		for (index = 0; index < len(RESRCS); index++) {
-			createAndEnqueueEvent(event_q, newProcess(&proc_types[i], 0), 0, 3);
-		}
-	}
 
 	// *************************** RUN SIMULATION *****************************
 
-	if (SIM_STOP == 0) {
-		printf("Simulation time CANNOT be 0 or unspecified.\n");
-		printf("Please specify a simulation stop time and rerun the program with the -t flag.\n");
-		printf("Program terminated.\n");
-	} else {
 		while(c.time < SIM_TIME) { // SIM_TIME was specified by user
 			if (INCR) { printf("\n\nPress any key to advance time.\n\n"); mygetch(); }
 			// int proc_turnaround = 0; // number of processes turned around
@@ -144,19 +134,19 @@ int main(int argc, char* argv[]) {
 			Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
 			// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 			switch(ev->type){
-				case 0: // creationEvent, put process on ready Queue
-					// putProcOnReadyQ(ev->p, ready_q);
+
+
+
+				case 0: // process created
+					activateProcess(ev->proc);
+					if (requestResource(ev->proc, ev->res)) { claimResource(ev->proc, ev->res); }
 					break;
-				case 1: // process leaves system
-					// proc_turnaround = leaveSystem(ev->p, &c, proc_stats);
-					break;
-				case 2: // process gets killed
-					break;
-				case 3: // process requests resource
-					// ioService(event_q, ev->p, &c, cpu_stats);
-					break;
-				case 4: // process releases resource
-					// putProcOnReadyQ(ev->p, ready_q);
+				case 1: // process terminated - release resources and deactivate?
+					//revisitRequests();
+					deactivateProcess(ev->proc);
+					int x; // release all resources
+					for(x=0; x<NUM_RES; x++)
+						releaseResource(ev->proc, ev->res); 
 					break;
 				default:
 					printf("Failed; event type '%d' unknown.\n", ev->type);
@@ -168,7 +158,6 @@ int main(int argc, char* argv[]) {
 
 			// jump = advance_time(&c, event_q);
 		}
-	}
 	// int stop_time = system_time(&c) - jump;
 
  	// ***************************** OUTPUT STATS *****************************
@@ -261,10 +250,10 @@ void read_input(char* file_name) {
 		// vars to help track line number 
 		int mcStart = 3; // beginning of line numbers specifying max claims
 		int mcEnds; 	 // end of line numbers specifying max claims
-		int riStart; 	 // beginning of line numbers specifying mean length of time a process holds resource
-		int riEnds; 	 // end of line numbers specifying request intervals between process asking for resource 
-		int rtStart;	 // beginning of line numbers specifying length of time process retains resource
-		int rtEnds; 	 // beginning of line numbers specifying length of time process retains resource
+		int iatStart; 	 // beginning of line numbers specifying mean length of time a process holds resource
+		int iatEnds; 	 // end of line numbers specifying request intervals between process asking for resource 
+		int etStart;	 // beginning of line numbers specifying length of time process retains resource
+		int etEnds; 	 // beginning of line numbers specifying length of time process retains resource
 
 		while(fgets ( line, MAX_LENGTH_PT, file) != NULL) { // read a line
 
@@ -277,11 +266,10 @@ void read_input(char* file_name) {
 				
 				// init index vars since we know num procs
 				mcEnds = mcStart + NUM_PROCS; 
-				riStart = mcEnds; 
-				riEnds = riStart + NUM_PROCS; 
-				rtStart = riEnds; 
-				rtEnds = rtStart + NUM_PROCS; 
-
+				iatStart = mcEnds; 
+				iatEnds = iatStart + NUM_PROCS; 
+				etStart = iatEnds;
+				etEnds = etStart + NUM_PROCS; 
 				lineNum++; 
 			} 
 			else if(lineNum == 1) // second line is number of resources
@@ -295,19 +283,15 @@ void read_input(char* file_name) {
 			{
 				int index0 = 0; // keep track of which index of resource array we are at, 
 				char* numResInst;
-				for(numResInst = strtok(line, " "); numResInst != NULL; numResInst = strtok(NULL, " ")) 
-				{
-					//for( index0 = 0; index0 < NUM_RES; index0++) 
-					//{
-						//printf("line number is %d and numResInst is %d\n", lineNum, numResInst);
-						Resource* RS = malloc(sizeof(Resource)); 
-						RS->type = index0; 
-						RS->total_inst = atoi(numResInst);
-						RS->available = atoi(numResInst); 
-						RS->request_q = initQ();
-						RESRCS[index0] = RS; 
-						index0++;
-					//}
+				for(numResInst = strtok(line, " "); numResInst != NULL; numResInst = strtok(NULL, " ")) {
+
+					Resource* RS = malloc(sizeof(Resource)); 
+					RS->type = index0; 
+					RS->total_inst = atoi(numResInst);
+					RS->available = atoi(numResInst); 
+					RS->request_q = initQ();
+					RESRCS[index0] = RS; 
+					index0++;
 				} 
 				lineNum++;  
 			} 
@@ -316,48 +300,39 @@ void read_input(char* file_name) {
 				int index1 = lineNum - mcStart; 
 				Process* PR = malloc(sizeof(Process)); // create new process
 				PROCESSES[index1] = PR; 
+
+				int* curr_use = malloc(sizeof(int) * NUM_RES);
+				int a; 
+				for(a = 0; a < NUM_RES; a++)
+					curr_use[a] = 0;
+
 				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
 				int i = 0; 
 				char* numMC; // read line
 				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) 
 				{
-					//for(i = 0; i < NUM_RES; i++) 
 					max_claims[i] = atoi(numMC); // store maxClaims array
 					i++;
 				} 
+
+				PROCESSES[index1]->activated = 0;
+				PROCESSES[index1]->id = index1; 
+				PROCESSES[index1]->curr_use = curr_use;
 				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
-				lineNum++;  // go to next line
+				lineNum++;  								// go to next line
 			} 
-			else if(lineNum >= riStart && lineNum < riEnds) // lines relevant to request intervals for each resource - each line specifies req_intervals array for one process
+			else if(lineNum >= iatStart && lineNum < iatEnds) // lines relevant to interarrival time for each process - each line specifies interarrival time for one process
 			{
-				int index2 = lineNum - riStart; 
-				int* req_intervals = malloc(sizeof(int) * NUM_RES);
-				int j = 0; 
-				char* numRI;
-				for(numRI = strtok(line, " "); numRI != NULL; numRI = strtok(NULL, " ")) 
-				{
-					//for(j = 0; j < NUM_RES; j++) {
-						req_intervals[j] = atoi(numRI); 
-						j++;
-					//}
-				} PROCESSES[index2]->req_intervals = req_intervals; 
+				int index2 = lineNum - iatStart; 
+				PROCESSES[index2]->interarrivalTime = atoi(line); 
 				lineNum++; 
 			} 
-			else if(lineNum >= rtStart && lineNum < rtEnds) // lines relevant to retain times for each resource - each line holds retain_time array for one process
-			{ 
-				int index3 = lineNum - rtStart; 
-				int* retain_time = malloc(sizeof(int) * NUM_RES);
-				int k = 0; 
-				char* numRT;
-				for(numRT = strtok(line, " "); numRT != NULL; numRT = strtok(NULL, " ")) {
-					//for(k = 0; k < NUM_RES; k++) {
-						retain_time[k] = atoi(numRT); 
-						k++;
-					//}
-				}
-				PROCESSES[index3]->retain_time = retain_time; 
+			else if(lineNum >= etStart && lineNum < etEnds) // lines relevant to interarrival time for each process - each line specifies interarrival time for one process
+			{
+				int index3 = lineNum - etStart; 
+				PROCESSES[index3]->execTime = atoi(line); 
 				lineNum++; 
-			}
+			} 
 		} 
 
 		readResourceArray(); 
@@ -374,100 +349,86 @@ void readResourceArray() {
 
 void readProcessesArray() {
 	int b, c; 
-
 	for(b = 0; b < NUM_PROCS; b++) 
 	{
 		printf("Process at index: %d\n", b);  
 		for( c = 0; c < NUM_RES; c++) 
-			printf("has, for R%d, max claims %d, request interval %d and retain time %d\n", c, PROCESSES[b]->max_claims[c], PROCESSES[b]->req_intervals[c], PROCESSES[b]->retain_time[c]);
+			printf("with id %d, exectime %d and interarrival time %d has, for R%d, max claims %d\n", PROCESSES[b]->id, PROCESSES[b]->execTime, PROCESSES[b]->interarrivalTime, c, PROCESSES[b]->max_claims[c]);
 	}
 }
 
+void initEventQueue(PQueue_STRUCT* event_q) {
+	int i, j; 
+	for (i = 0; i < NUM_PROCS; i++) {
+		for (j = 0; j < NUM_RES; j++) {
+			createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[j], 0, 0); // type 0 is create
+		}
+	}
+}
 
+void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
+	activateProcess(proc);
+	int i, y;
+	for (y = 0; y < NUM_RES; y++) {
+			createAndEnqueueEvent(event_q, proc, RESRCS[y], system_time(c)+proc->interarrivalTime, 0); // type 0 is create
+		}
+}
 
+int requestResource(Process* proc, Resource* res) { return res->available >= proc->max_claims[res->type]; }
 
-	/*     FILE *file = fopen( filename, "r" );
-    //maximum length of a line
-    char line [MAX_LENGTH_PT]; .
-    //what line we're at
-    int n = 0;
-    int index = 0; 
-    //make sure file isn't null .
-    if (file != NULL) {
-        //read a line - line acts as a buffer that stores the word currently being read from the file
-        while ( fgets ( line, MAX_LENGTH_PT, file ) != NULL ) {
-            if (n == 0) {
-                numProcs = atoi(line);
-                PT = malloc(numProcs * sizeof(processTypes_t));
-                printf("%f\n", numProcs);
-                n++;
-            } else {
-                //create a Process Type for each line of the file (except for the first) and allocate memory space for it
-                processTypes_t* PT1 = malloc(sizeof(processTypes_t));
-                int count = 0; // number of tokens
-                char* p; 
-                for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")) {
-                    if (count == 0)
-                        PT1->processType = atoi(p);
-                    else if (count == 1)
-                        PT1->CPUtime = atoi(p);
-                    else if (count == 2)
-                        PT1->IOTime = atoi(p);
-                    else if (count == 3)
-                        PT1->interATime = atoi(p);
-                    else if (count == 4)
-                        PT1->burstTime = atoi(p);
-                    count++;
-                } 
-                PT[index] = *PT1;
-                n++;
-                index++;
-            }
-        } fclose ( file );
-    } */
-        	////////////////////////////////////////// THIS IS WHERE WE SET:
-		// - NUM_PROCS
-		// - RESRCS
+void claimResource(Process* proc, Resource* res) { 
+	res->available -= proc->max_claims[res->type]; 
+	proc->curr_use[res->type] += proc->max_claims[res->type];
 
-	// fscanf(fp, "%d", &NUM_PROC_TYPES);
-	// for (index = 0; index < NUM_PROC_TYPES; index++) {
+	if(ENABLE_VERBOSE)
+		printf("Process with Process ID %d has been given %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type);
+}
 
-		/////////////////////////////////////// THIS IS WHERE WE SET:
-		// - 2d matrix representing max claims each process has on each resource
-		// - 2d matrix representing mean length of time between each process’ requests for each resource
-		// - 2d matrix representing length of time each process expects to retain each resource
+void releaseResource(Process* proc, Resource* res) {
+	
+	res->available += proc->max_claims[res->type];
+	proc->curr_use[res->type] -= proc->max_claims[res->type];
 
-	// 	fscanf(fp, "%s %d %d %d %d",
-	// }
+	if(ENABLE_VERBOSE) {
+		printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type);
+	}
+}
 
+void kill(Process* proc) {
+	deactivateProcess(proc); 
+	int z; // release all resources
+	for(z=0; z<NUM_RES; z++)
+		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
+}
 
-
-
-
-
-
-
-	//fclose(fp);
-
+/*
+void revisitRequests() {
+	int i, j;
+	for(i = 0; i < len(PROCESSES); i++)
+		for(j = 0; j <len(RESRCS); j++)
+			if(PROCESSES[i]->activated)
+				if(PROCESSES[i]->curr_use[j] != PROCESSES[i]->max_claims[j])
+					if(requestResource(PROCESSES[i], RESRCS[j]))
+						claimResource(PROCESSES[i], RESRCS[j]);
+}*/
 
 // *************************** FUNCTION DEFINITIONS ***************************
 
-// int randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
-// int system_time(ClockSim* c) { return c->time; }
-// int randomFreq(int len, int lower_bound);
+int randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
+int system_time(ClockSim* c) { return c->time; }
 
-// /*
-//  * Advances the logical time of the discrete event simulation to the time at
-//  * which the next event takes place.
-//  */
-// int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
-// 	int curr_time = c->time;
-// 	// c->time = getMin(event_q)->priority;
-// 	NodePQ* temp = getMin(event_q);
-// 	c->time = temp->priority;
-// 	if (ENABLE_VERBOSE) { (printf("System time advancing to %d\n", c->time)); }
-// 	return c->time - curr_time;
-// }
+/*
+ * Advances the logical time of the discrete event simulation to the time at
+ * which the next event takes place.
+ */
+int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
+	int curr_time = c->time;
+	// c->time = getMin(event_q)->priority;
+	NodePQ* temp = getMin(event_q);
+	c->time = temp->priority;
+	if (ENABLE_VERBOSE) { (printf("System time advancing to %d\n", c->time)); }
+	return c->time - curr_time;
+}
 
 // /*
 //  * Frees process memory from program as it exits system and returns turnaround
@@ -535,10 +496,18 @@ void readProcessesArray() {
 // 	return proc;
 // }
 
+void activateProcess(Process* proc) { proc->activated = 1; }
+
+void deactivateProcess(Process* proc) { proc->activated = 0; }
+
 /*
  * Creates new event and enqueues in event queue.
  */
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type) {
-	enqueuePQ(event_q, createEvent(proc, timestamp, type));
-	// if (ENABLE_VERBOSE) { printf("%d(%d) should appear in event queue.\n", timestamp, type); }
+	enqueuePQ(event_q, createEvent(proc, res, timestamp, type));
 }
+
+
+
+
+

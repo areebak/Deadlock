@@ -6,20 +6,19 @@
 #ifndef PQ_H
 #define PQ_H
 #include <stdio.h>
-#include "queue.h"
+#include "event.h"
 
-typedef struct NodePQ{
+typedef struct NodePQ {
 	Event *event;
 	int priority;
 	struct NodePQ *next;
-}NodePQ;
+} NodePQ;
 
-typedef struct PQueue_STRUCT PQueue_STRUCT;
-struct PQueue_STRUCT {
+typedef struct PQueue_STRUCT {
 	struct NodePQ* HEAD;
 	struct NodePQ* TAIL;
 	int SIZE;
-};
+} PQueue_STRUCT;
 
 PQueue_STRUCT* initPQ();
 void enqueuePQ(PQueue_STRUCT* pq,  Event* event);

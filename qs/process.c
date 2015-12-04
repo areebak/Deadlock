@@ -3,7 +3,7 @@
 
 #include "process.h"
 
-Process* createProc(int exec_time, int* max_claims, int num_resrcs, int* req_intervals, int* retain_time) {
+/*Process* createProc(int exec_time, int* max_claims, int num_resrcs, int* req_intervals, int* retain_time) {
 	Process* p = malloc(sizeof(Process));
 
 	// init ints 
@@ -23,7 +23,7 @@ Process* createProc(int exec_time, int* max_claims, int num_resrcs, int* req_int
 	p->curr_use = curr_use;
 	
 	return p;
-}
+}*/
 
 
 /* if n = 0 - num processes
