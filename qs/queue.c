@@ -68,13 +68,13 @@ int getSizeQ(Queue_STRUCT* q){
 
 // Prints all processes
 void printQ(Queue_STRUCT* q){
-  // Node* current = q->HEAD;
-  // while (current != NULL){
-  //   if (current->next != NULL)
-  //     printf("[%p] with start time %d->", current->process, current->process->start_time);
-  //   else
-  //     printf("[%p] with start time %d", current->process, current->process->start_time);
-  //   current = current->next;
-  // }
-  // printf("\n");
+  Node* current = q->HEAD;
+  while (current != NULL){
+    if (current->next != NULL)
+      printf("%d ->", current->process->id);
+    else
+      printf("%d", current->process->id);
+    current = current->next;
+  }
+  printf("\n");
 }

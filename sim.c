@@ -81,28 +81,23 @@ void read_input(char* file_name);
 void readResourceArray(); 
 void readProcessesArray(); 
 int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
-void initEventQueue(PQueue_STRUCT* event_q);
-// int  randomExecTime(int len, int lower_bound);
-// int  randomFreq(int len, int lower_bound);
-// int  leaveSystem(Process* p, ClockSim* c, ProcStats* proc_stats);
+int  randomExecTime(int len, int lower_bound);
 int  system_time(ClockSim* c);
-int requestResource(Process* proc, Resource* res);
+void requestResources(Process* proc, Resource* res);
 void claimResource(Process* proc, Resource* res);
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type);
 void releaseResource(Process* proc, Resource* res); 
 void activateProcess(Process* proc);
 void deactivateProcess(Process* proc);
-
-
-// Process* newProcess(Procfile* proc_type, int timestamp);
-// Process* genRemovalEventForProc(PQueue_STRUCT* event_q, Process* p, ClockSim* c, CPU_STRUCT* cpu,CPUStats* cpu_stats);
+void acquireResources();
+PQueue_STRUCT* initEventQueue();
 
 // ********************************** MAIN ************************************
 
 int main(int argc, char* argv[]) {
 
 	printf("Initializing simulation...\n");
-	int i, index, jindex; // counters
+	int i; // counter
 	int jump; // keeps track of units of time between current and previous timestamps
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
@@ -110,54 +105,40 @@ int main(int argc, char* argv[]) {
 	// test(); 			   // bankers algorithm tests
 	// test2(); 
 	//exit(0);
-	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<< INIT clock
-	PQueue_STRUCT* event_q = initPQ(); // <<<<<<<< INIT event queue
-
-	// for each process, generate request event at time 0 for each resource type
-	// for (i = 0; i < len(PROCESSES); i++) {
-	// 	for (index = 0; index < len(RESRCS); index++) {
-	// 		createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[index], 0, 0); // type 0 is create
-	// 	}
-	// }
-
-	initEventQueue(event_q);
+	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
+	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
 	// ***************************** INIT STATS *******************************
 
 	// *************************** RUN SIMULATION *****************************
 
-		while(c.time < SIM_TIME) { // SIM_TIME was specified by user
-			if (INCR) { printf("\n\nPress any key to advance time.\n\n"); mygetch(); }
-			// int proc_turnaround = 0; // number of processes turned around
-			if (ENABLE_VERBOSE) { printf("\nSystem time: %d\n", c.time); }
-			// if (ENABLE_VERBOSE) { printf("EVENT QUEUE: "); printPQ(event_q); }
-			Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
-			// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
-			switch(ev->type){
-
-
-
-				case 0: // process created
-					activateProcess(ev->proc);
-					if (requestResource(ev->proc, ev->res)) { claimResource(ev->proc, ev->res); }
-					break;
-				case 1: // process terminated - release resources and deactivate?
-					//revisitRequests();
-					deactivateProcess(ev->proc);
-					int x; // release all resources
-					for(x=0; x<NUM_RES; x++)
-						releaseResource(ev->proc, ev->res); 
-					break;
-				default:
-					printf("Failed; event type '%d' unknown.\n", ev->type);
-			}
-
-			// ************************ GATHER STATS **************************
-
-			////////////////////// HMMMM DO THIS
-
-			// jump = advance_time(&c, event_q);
+	while(c.time < SIM_TIME) {
+		if (INCR) { printf("\n\nPress any key to advance time.\n\n"); mygetch(); }
+		// int proc_turnaround = 0; // number of processes turned around
+		if (ENABLE_VERBOSE) { printf("\nSystem time: %d\n", c.time); }
+		if (ENABLE_VERBOSE) { printf("Event queue: Size %d\n", getSizePQ(event_q)); printPQ(event_q); }
+		Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
+		// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
+		switch(ev->type) {
+			case 0: // process created
+				activateProcess(ev->proc);
+				requestResources(ev->proc, ev->res);
+				break;
+			case 1: // process terminated - release resources and deactivate?
+				deactivateProcess(ev->proc);
+				for(i = 0; i < NUM_RES; i++) { releaseResource(ev->proc, ev->res); }
+				break;
+			default:
+				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
+		acquireResources();
+
+		// ************************ GATHER STATS **************************
+
+		////////////////////// HMMMM DO THIS
+
+		jump = advance_time(&c, event_q);
+	}
 	// int stop_time = system_time(&c) - jump;
 
  	// ***************************** OUTPUT STATS *****************************
@@ -172,6 +153,14 @@ int main(int argc, char* argv[]) {
 	//
 	// ******************************************************************************
 }
+
+// *************************** FUNCTION DEFINITIONS ***************************
+
+int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
+int  system_time(ClockSim* c) { return c->time; }
+void activateProcess(Process* proc) { proc->activated = 1; }
+void deactivateProcess(Process* proc) { proc->activated = 0; }
+void requestResources(Process* proc, Resource* res) { enqueueQ(res->request_q, proc); }
 
 /*
  * Read command-line arguments.
@@ -349,73 +338,71 @@ void readResourceArray() {
 
 void readProcessesArray() {
 	int b, c; 
-	for(b = 0; b < NUM_PROCS; b++) 
-	{
+	for(b = 0; b < NUM_PROCS; b++) {
 		printf("Process at index: %d\n", b);  
 		for( c = 0; c < NUM_RES; c++) 
 			printf("with id %d, exectime %d and interarrival time %d has, for R%d, max claims %d\n", PROCESSES[b]->id, PROCESSES[b]->execTime, PROCESSES[b]->interarrivalTime, c, PROCESSES[b]->max_claims[c]);
 	}
 }
 
-void initEventQueue(PQueue_STRUCT* event_q) {
+PQueue_STRUCT* initEventQueue() {
+	PQueue_STRUCT* event_q = initPQ();
 	int i, j; 
 	for (i = 0; i < NUM_PROCS; i++) {
-		for (j = 0; j < NUM_RES; j++) {
+		for (j = 0; j < NUM_RES; j++)
 			createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[j], 0, 0); // type 0 is create
-		}
 	}
+	return event_q;
 }
 
 void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
 	activateProcess(proc);
 	int i, y;
 	for (y = 0; y < NUM_RES; y++) {
-			createAndEnqueueEvent(event_q, proc, RESRCS[y], system_time(c)+proc->interarrivalTime, 0); // type 0 is create
-		}
+		createAndEnqueueEvent(event_q, proc, RESRCS[y], system_time(c)+proc->interarrivalTime, 0); // type 0 is create
+	}
 }
-
-int requestResource(Process* proc, Resource* res) { return res->available >= proc->max_claims[res->type]; }
 
 void claimResource(Process* proc, Resource* res) { 
 	res->available -= proc->max_claims[res->type]; 
 	proc->curr_use[res->type] += proc->max_claims[res->type];
-
-	if(ENABLE_VERBOSE)
-		printf("Process with Process ID %d has been given %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type);
+	if(ENABLE_VERBOSE) { printf("%d Process with Process ID %d has been given %d instances of resource %d, leaving %d\n", res->total_inst, proc->id, proc->max_claims[res->type], res->type, res->available); }
 }
 
 void releaseResource(Process* proc, Resource* res) {
-	
 	res->available += proc->max_claims[res->type];
 	proc->curr_use[res->type] -= proc->max_claims[res->type];
-
-	if(ENABLE_VERBOSE) {
-		printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type);
-	}
+	if(ENABLE_VERBOSE) { printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type); }
 }
 
 void kill(Process* proc) {
 	deactivateProcess(proc); 
 	int z; // release all resources
-	for(z=0; z<NUM_RES; z++)
+	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
 }
 
+void acquireResources() {
+	int i;
+	for (i = 0; i < NUM_RES; i++) {
+		Resource* this_resrc = RESRCS[i];
+		Queue_STRUCT* request_q = this_resrc->request_q;
+		if (ENABLE_VERBOSE) { printf("[%d] R %d request queue: ", this_resrc->available, i); printQ(request_q); }
+		if (getSizeQ(request_q)) {
+			Process* first_proc = peekQ(request_q)->process;
+			if (this_resrc->available >= first_proc->max_claims[i]) {
+				claimResource(dequeueQ(request_q)->process, this_resrc);
+			}
+		}
+	}
+}
+
 /*
-void revisitRequests() {
-	int i, j;
-	for(i = 0; i < len(PROCESSES); i++)
-		for(j = 0; j <len(RESRCS); j++)
-			if(PROCESSES[i]->activated)
-				if(PROCESSES[i]->curr_use[j] != PROCESSES[i]->max_claims[j])
-					if(requestResource(PROCESSES[i], RESRCS[j]))
-						claimResource(PROCESSES[i], RESRCS[j]);
-}*/
-
-// *************************** FUNCTION DEFINITIONS ***************************
-
-int randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
-int system_time(ClockSim* c) { return c->time; }
+ * Creates new event and enqueues in event queue.
+ */
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type) {
+	enqueuePQ(event_q, createEvent(proc, res, timestamp, type));
+}
 
 /*
  * Advances the logical time of the discrete event simulation to the time at
@@ -429,85 +416,3 @@ int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 	if (ENABLE_VERBOSE) { (printf("System time advancing to %d\n", c->time)); }
 	return c->time - curr_time;
 }
-
-// /*
-//  * Frees process memory from program as it exits system and returns turnaround
-//  * time for process.
-//  */
-// int leaveSystem(Process* p, ClockSim* c, ProcStats* proc_stats) {
-// 	ProcStats* procS = getProcTypeProcStats(proc_stats, p);
-// 	procS->numCompleted++;// increment num completed
-
-// 	if (ENABLE_VERBOSE) {printf("Process %p left the system.\n", p);}
-// 	int temp_start = p->start_time;
-// 	free(p); // free process memory
-// 	return system_time(c) - temp_start;
-// }
-
-// /*
-// * Assigns process to CPU and generates event to remove it from CPU at a later time.
-// */
-// Process* genRemovalEventForProc(PQueue_STRUCT* event_q, Process* p, ClockSim* c, CPU_STRUCT* cpu, CPUStats* cpu_stats) {
-
-// 	if (ENABLE_VERBOSE) { printf("Putting process %p on CPU %p; should last %d time units.\n-> i.e. ", p, cpu, MIN(QUANTUM, MIN(p->exec_time_left, p->time_until_io))); }
-// 	// non-preemptive scheduling
-// 	if (QUANTUM == 0) {
-// 		// case where the process needs no more i/o; just runs until it's done
-// 		if (p->exec_time_left < p->time_until_io) {
-// 			createAndEnqueueEvent(event_q, p, system_time(c)+ p->exec_time_left + CONTEXT_SWITCH_COST, 1, cpu_stats);
-// 		// case where process needs i/o at end of burst time
-// 		} else if (p->time_until_io < p->burst_time) {
-// 			createAndEnqueueEvent(event_q, p, system_time(c)+ p->time_until_io + CONTEXT_SWITCH_COST, 2, cpu_stats);
-// 		}
-// 	// preemptive
-// 	} else {
-// 		// case where process can complete in less than quantum and next i/o fault time
-// 		if (p->exec_time_left <= QUANTUM && p->exec_time_left < p->time_until_io) {
-// 			// an event is generated that will cause the process to leave the system
-// 			createAndEnqueueEvent(event_q, p, system_time(c) + p->exec_time_left + CONTEXT_SWITCH_COST, 1, cpu_stats);
-// 		// if the time remaining for the process to I/O fault is less than the quantum
-// 		} else if (p->time_until_io <= QUANTUM) {
-// 			// an event is generated that will cause the process to leave for I/O service
-// 			createAndEnqueueEvent(event_q, p, system_time(c) + p->time_until_io + CONTEXT_SWITCH_COST, 2, cpu_stats);
-// 		// else the process' quantum expires
-// 		} else {
-// 			// an event is generated that will return the process to the ready Queue
-// 			createAndEnqueueEvent(event_q, p, system_time(c) + QUANTUM + CONTEXT_SWITCH_COST, 3, cpu_stats);
-// 		}
-// 	}
-// 	return p;
-// }
-
-// /*
-//  * Initialize new process to be created at a later time.
-//  */
-// Process* newProcess(Procfile* proc_type, int timestamp) {
-// 	int new_burst_time = randomBurstTime(proc_type->avgBurst);
-// 	int new_exec_time = randomExecTime(proc_type->avgCPU, new_burst_time);
-// 	int new_io_time = DISABLE_IO_FAULT ? 0 : randomIOTime(proc_type->avgIO, 0);
-// 	// init process of that type
-// 	Process* proc = createProc(proc_type->processType,
-// 		new_burst_time,
-// 		new_io_time,
-// 		new_burst_time,
-// 		timestamp,
-// 		new_exec_time);
-// 	if(ENABLE_VERBOSE) { printf("Creating process %p of type %s with burst time %d, io time %d, total cpu time %d.\n", proc, proc->type, proc->burst_time, proc->io_fault_serv, proc->exec_time_left); }
-// 	return proc;
-// }
-
-void activateProcess(Process* proc) { proc->activated = 1; }
-
-void deactivateProcess(Process* proc) { proc->activated = 0; }
-
-/*
- * Creates new event and enqueues in event queue.
- */
-void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type) {
-	enqueuePQ(event_q, createEvent(proc, res, timestamp, type));
-}
-
-
-
-
-

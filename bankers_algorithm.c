@@ -26,6 +26,7 @@ int main() {
 
 	test(); 
 	test2();
+	return 0;
 }*/
 
 /**
@@ -50,7 +51,7 @@ int setNumPrcRes(int setPrc, int setRes) {
 	safeState = (int*) malloc(numPrc * sizeof(int));
 
 	initArrays();
-
+	return 0;
 }
 
 /**
