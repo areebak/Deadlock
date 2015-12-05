@@ -113,13 +113,6 @@ int main(int argc, char* argv[]) {
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initPQ(); // <<<<<<<< INIT event queue
 
-	// for each process, generate request event at time 0 for each resource type
-	// for (i = 0; i < len(PROCESSES); i++) {
-	// 	for (index = 0; index < len(RESRCS); index++) {
-	// 		createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[index], 0, 0); // type 0 is create
-	// 	}
-	// }
-
 	initEventQueue(event_q);
 
 	// ***************************** INIT STATS *******************************
@@ -134,8 +127,6 @@ int main(int argc, char* argv[]) {
 			Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
 			// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 			switch(ev->type){
-
-
 
 				case 0: // process created
 					activateProcess(ev->proc);
@@ -309,8 +300,7 @@ void read_input(char* file_name) {
 				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
 				int i = 0; 
 				char* numMC; // read line
-				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) 
-				{
+				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) {
 					max_claims[i] = atoi(numMC); // store maxClaims array
 					i++;
 				} 
