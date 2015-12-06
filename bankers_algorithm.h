@@ -26,6 +26,6 @@ extern void readCurrUse();
 
 extern void readAvailable();
 
-extern void runprocesses();
+extern int runprocesses();
 
 extern void printSafeSeq();

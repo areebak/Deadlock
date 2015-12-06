@@ -32,7 +32,8 @@ int   ENABLE_VERBOSE;
 int   SIM_TIME;
 int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection and recovery
 int   NUM_PROCS;
-int   NUM_RES; 
+int   NUM_RES;
+int   N = 100; // MAKE THIS A COMMAND-LINE ARGUMENT!!!!!
 Resource** RESRCS;
 Process**  PROCESSES;
 
@@ -91,6 +92,7 @@ void activateProcess(Process* proc);
 void deactivateProcess(Process* proc);
 void acquireResources();
 PQueue_STRUCT* initEventQueue();
+void handleDeadlock(int mode, Event* ev);
 
 // ********************************** MAIN ************************************
 
@@ -99,6 +101,7 @@ int main(int argc, char* argv[]) {
 	printf("Initializing simulation...\n");
 	int i; // counter
 	int jump; // keeps track of units of time between current and previous timestamps
+	int thresh = N; // the threshold (timestamp) at which point the system must next check for deadlock
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
@@ -131,6 +134,7 @@ int main(int argc, char* argv[]) {
 			default:
 				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
+		if (c.time >= thresh) {	handleDeadlock(MODE); thresh += N; }
 		acquireResources();
 
 		// ************************ GATHER STATS **************************
@@ -149,7 +153,8 @@ int main(int argc, char* argv[]) {
 
 	// ******************************************************************************
 	//
-	//          TODO:  REMEMBER TO FREE MEMORY WE MALLOC!!
+	//          TODO:  REMEMBER TO FREE MEMORY WE MALLOC!! >>> DOES THIS MEAN WHEN WE
+	//                 DEQUEUE EVENTS AND KILL PROCESSES? RESOURCES CAN BE UNDONE AT SIMULATION TERMINATION
 	//
 	// ******************************************************************************
 }
@@ -394,6 +399,27 @@ void acquireResources() {
 			}
 		}
 	}
+}
+
+void handleDeadlock(int mode, Event* ev) {
+	int i;
+	setNumPrcRes(NUM_PROCS, NUM_RES);
+	for (i = 0; i < NUM_PROCS; i++) {
+		setMaxClaims(PROCESSES[i]->id, PROCESSES[i]->max_claims);
+		setCurrUse(PROCESSES[i]->id, PROCESSES[i]->curr_use);
+	}
+	int avb[] = (int)malloc(sizeof(int) * NUM_RES);
+	for (i = 0; i < NUM_RES; i++) {
+		avb[i] = RESRCS[i]->available;
+	}
+	setAvailable(avb); 
+	if(!runprocesses()) {
+		rollback(Event* ev);
+	}
+}
+
+void rollback(Event* ev) {
+
 }
 
 /*
