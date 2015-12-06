@@ -14,7 +14,6 @@
 #include "bankers_algorithm.h"
 #include "qs/event.h"
 
-
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
 // #define MIN(a,b) (((a)<(b))?(a):(b))
 #define DEFAULT_INPUT_FILE "input/input.txt"
@@ -90,6 +89,7 @@ void releaseResource(Process* proc, Resource* res);
 void activateProcess(Process* proc);
 void deactivateProcess(Process* proc);
 void acquireResources();
+//void evalProcessStatus(Process* proc, PQueue_STRUCT* event_q, ClockSim* c);
 PQueue_STRUCT* initEventQueue();
 
 // ********************************** MAIN ************************************
@@ -131,15 +131,12 @@ int main(int argc, char* argv[]) {
 			default:
 				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
-		acquireResources();
+		acquireResources(c);
 
 		// ************************ GATHER STATS **************************
 
-		////////////////////// HMMMM DO THIS
-
 		jump = advance_time(&c, event_q);
 	}
-	// int stop_time = system_time(&c) - jump;
 
  	// ***************************** OUTPUT STATS *****************************
 
@@ -395,6 +392,7 @@ void acquireResources() {
 		}
 	}
 }
+
 
 /*
  * Creates new event and enqueues in event queue.
