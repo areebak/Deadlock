@@ -91,6 +91,9 @@ void requestResources(Process* proc, Resource* res);
 void claimResource(Process* proc, Resource* res);
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type);
 void releaseResource(Process* proc, Resource* res); 
+int sumProcMaxClaims(Process* proc); 
+int sumProcCurrUse(Process* proc); 
+void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c);
 void acquireResources();
 void kill(Process* proc, PQueue_STRUCT* event_q);
 PQueue_STRUCT* initEventQueue();
@@ -456,44 +459,63 @@ int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 
 	/* CALCULATE FIGURES FOR CHECKING WHAT CASE WE ARE IN */
-	// sum curr use
-	int curr_resrc_status = sumProcCurrUse(proc); 
-	// set max need for resources
-	int max_resrc_req = sumProcMaxClaims(proc); 
-	// set minimum requirement for resources
-	int min_resrc_req  
-	min_resrc_req = (int) (PARTIAL_RESRC * sumProcMaxClaims);
-	// each process requests at least 1 resource instance. cannot be 0. 
-	if(min_resrc_req < 1)
-		min_resrc_req = 1; 
 
-	// last leg of process execution time - full max_claim quantity needed to complete phase
-	int final_exec_phase; 
-	final_exec_phase = (int) PARTIAL_EXEC * proc->actual_execTime; 
+	int curr_resrc_status = sumProcCurrUse(proc); // sum curr use
+	int max_resrc_req = sumProcMaxClaims(proc); // set max need for resources
+	int min_resrc_req = (int) (PARTIAL_RESRC * max_resrc_req); // set minimum requirement for resources
+	if(min_resrc_req < 1) 	// each process requests at least 1 resource instance. cannot be 0. 
+		min_resrc_req = 1; 
+	// first leg of process execution time - min_resrc_req quantity needed to complete phase
+	int first_exec_phase =(int) PARTIAL_EXEC * proc->actual_execTime; 
+	// final leg of process execution time - max claim quantity needed to complete phase
+	int final_exec_phase = proc->actual_execTime - first_exec_phase; 
 
 
 	/* SET CASE */
 
-	int case = -1; 
+	int currentCase = -1; 
+	if(curr_resrc_status > min_resrc_req)
+		currentCase = 0; 
+	else if(curr_resrc_status >= min_resrc_req && curr_resrc_status < max_resrc_req )
+		currentCase = 1; 
+	else if(curr_resrc_status >= max_resrc_req)
+		currentCase = 2; 
 
-	switch(case)
+	if(ENABLE_VERBOSE) { "Case %d has been set", currentCase; }
+
+
 	
+	/* DETERMINE BEHAVIOR BASED ON CASE */
 
-
-
-
-		// if we get to this point our current use for all the resources is between >= y and < max claims
-		// case 1: partial_resrc % of max claims <= current use < 100% of max claims
-		if(proc->executing) {
-			if(system_time(c) - proc->startTime >= proc_partial_exec) {
-				proc->activeTime = system_time(c) - proc->startTime; 
-				proc->executing = 0; 
-			} 
-		} else {
-			startTime = system_time(c); 
-			proc->executing = 1; 
-		} 
-
+	switch(currentCase) { 
+		case 0: // we do not have min resrc req
+			if(ENABLE_VERBOSE) { "Process with id %d has insufficient resources to execute its first phase at time %d", proc->id, system_time(c); }
+			break; 	// do nothing - we don't have our min resrc req to run!
+		case 1: // we have min resrc req but not full max claim req
+			if(proc->executing) {
+				if(system_time(c) - proc->startTime >= first_exec_phase) { // in first phase of execution-only need min resrc req which we now have!
+					// we were previously executing - consider this phase complete - update stats and reverse executing
+					proc->activeTime = system_time(c) - proc->startTime;
+					proc->executing = 0;
+				if(ENABLE_VERBOSE) { "Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->activeTime; }					
+				}
+			} else {
+				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
+				proc->startTime = system_time(c);
+				proc->executing = 1;
+				if(ENABLE_VERBOSE) { "Process with id %d is executing its first phase - started at time %d", proc->id, proc->startTime; }
+			}
+			break; 
+		case 2: // we have full max claim req - begin final execution phase!
+			// execute final phase, enqueue termination event
+			proc->executing = 1;
+			int i; 
+			for(i = 0; i < NUM_RES; i++)
+				createAndEnqueueEvent(event_q, proc, RESRCS[i], system_time(c)+final_exec_phase, 1); // enqueue termination time for after final execution phase
+			if(ENABLE_VERBOSE) { "Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+final_exec_phase; }
+			break;
+		default:
+			printf("Failed; case type '%d' unknown.\n", currentCase);
 	}
 }
 
@@ -532,5 +554,3 @@ int getPartialResrc(Process* proc) {
 
 	return proc_partial_resrc; 
 }
-
-
