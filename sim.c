@@ -452,8 +452,6 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 
 	if(ENABLE_VERBOSE) { "Case %d has been set", currentCase; }
 
-
-	
 	/* DETERMINE BEHAVIOR BASED ON CASE */
 
 	switch(currentCase) { 
@@ -480,8 +478,8 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 			proc->executing = 1;
 			int i; 
 			for(i = 0; i < NUM_RES; i++)
-				createAndEnqueueEvent(event_q, proc, RESRCS[i], system_time(c)+final_exec_phase, 1); // enqueue termination time for after final execution phase
-			if(ENABLE_VERBOSE) { "Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+final_exec_phase; }
+				createAndEnqueueEvent(event_q, proc, RESRCS[i], system_time(c)+(proc->actual_execTime - proc->activeTime), 1); // enqueue termination time for after final execution phase
+			if(ENABLE_VERBOSE) { "Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->activeTime); }
 			break;
 		default:
 			printf("Failed; case type '%d' unknown.\n", currentCase);
