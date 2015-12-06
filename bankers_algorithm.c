@@ -87,7 +87,7 @@ void test() {
 	// START BY CALLING THIS METHOD ALWAYS
 	setNumPrcRes(defaultPrc, defaultRes);
 	printf("\n\n Starting test 1:\n");
-	int mc1[] = {1, 7, 5};
+	int mc1[] = {10, 7, 5};
 	int mc2[] = {0, 6, 5}; 
 	int mc3[] = {0, 6, 5}; 
 
@@ -220,7 +220,7 @@ void readAvailable() {
 /**
 * Execute bankers algorithm and find a safe sequence
 */ 
-void runprocesses() {
+int runprocesses() {
 
 	int runningAProcess = 1; 
 	int safe = 0;
@@ -256,17 +256,18 @@ void runprocesses() {
 			}
 		}
 	}
-	if(safe == 0) 
-		printf("Safe state not found!\n");
+
+	if(safe)
+		printf("Safe state found");
 	else
-		printSafeSeq();
+		printf("Safe state not found");
+	return safe;
 }
 
 /**
 * Print safe sequence if one is found
 */
 void printSafeSeq() {
-
 	printf("Safe sequence found!\nSafe sequence is:\n");
 		int i;
 		for(i = 0; i < numPrc; i++)

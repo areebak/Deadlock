@@ -15,7 +15,7 @@
 #include "qs/event.h"
 
 // copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
-// #define MIN(a,b) (((a)<(b))?(a):(b))
+// #define MAX(a,b) (((a)>(b))?(a):(b))
 #define DEFAULT_INPUT_FILE "input/input.txt"
 #define DEFAULT_SIM_TIME 500
 #define MAX_LENGTH_PT 100
@@ -33,8 +33,8 @@ int    SIM_TIME;
 int    MODE; // 1 is deadlock avoidance; >1 is deadlock detection/recovery ~every MODE time units
 int    NUM_PROCS;
 int    NUM_RES;
-double PARTIAL_EXEC;
-double PARTIAL_RESRC;
+float PARTIAL_EXEC;
+float PARTIAL_RESRC;
 Resource** RESRCS;
 Process**  PROCESSES;
 
@@ -46,8 +46,8 @@ void setVERBOSE    () { ENABLE_VERBOSE = 1; }
 void setFILE(char *b) { FILE_NAME = b; }
 void setMODE  (int b) { MODE = b; }
 void setINCR       () { INCR = 1; }
-void setPART_EXEC (double b) { PARTIAL_EXEC = b; }
-void setPART_RES  (double b) { PARTIAL_RESRC = b; }
+void setPART_EXEC (float b) { PARTIAL_EXEC = b; }
+void setPART_RES  (float b) { PARTIAL_RESRC = b; }
 
 /*
  * Default command-line arguments if unspecified by user.
@@ -88,7 +88,7 @@ int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
 int  randomExecTime(int len, int lower_bound);
 int  system_time(ClockSim* c);
 void requestResources(Process* proc, Resource* res);
-void claimResource(Process* proc, Resource* res);
+void claimResource(Process* proc, Resource* res, int how_many);
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type);
 void releaseResource(Process* proc, Resource* res); 
 int sumProcMaxClaims(Process* proc); 
@@ -97,7 +97,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c);
 void acquireResources();
 void kill(Process* proc, PQueue_STRUCT* event_q);
 PQueue_STRUCT* initEventQueue();
-void handleDeadlock(Process* p, PQueue_STRUCT* event_q);
+void handleDeadlock(PQueue_STRUCT* event_q);
 
 // ********************************** MAIN ************************************
 
@@ -132,7 +132,7 @@ int main(int argc, char* argv[]) {
 				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
 		acquireResources();
-		if (c.time >= thresh) {	handleDeadlock(ev->proc, event_q); thresh += MODE; }
+		if (c.time >= thresh) {	handleDeadlock(event_q); thresh = (thresh + MODE < c.time) ? (c.time + MODE) : (thresh + MODE); }
 
 		// ************************ GATHER STATS **************************
 		jump = advance_time(&c, event_q);
@@ -193,19 +193,19 @@ void parse_args(int argc, char* argv[]) {
 				setFILE(optarg);
 				break;
 			case 'e':
-				setPART_EXEC(optarg);
+				setPART_EXEC(atof(optarg));
 				if (PARTIAL_EXEC < MIN_PARTIAL_EXEC || PARTIAL_EXEC > MAX_PARTIAL_EXEC) {
 					setPART_EXEC(DEFAULT_PARTIAL_EXEC);
-					printf("Partial execution threshold out of bounds; set to default: %s.\n", PARTIAL_EXEC);
+					printf("Partial execution threshold out of bounds; set to default: %lf.\n", PARTIAL_EXEC);
 				} else {
-					printf("Partial execution threshold: %s\n", optarg);
+					printf("Partial execution threshold: %s", optarg);
 				}
 				break;
 			case 'r':
-				setPART_RES(optarg);
-				if (PARTIAL_RES < MIN_PARTIAL_RES || PARTIAL_RES > MAX_PARTIAL_RES) {
-					setPART_RES(DEFAULT_PARTIAL_RES);
-					printf("Partial resource acquisition threshold out of bounds; set to default: %s.\n", PARTIAL_RES);
+				setPART_RES(atof(optarg));
+				if (PARTIAL_RESRC < MIN_PARTIAL_RES || PARTIAL_RESRC > MAX_PARTIAL_RES) {
+					setPART_RES(DEFAULT_PARTIAL_RESRC);
+					printf("Partial resource acquisition threshold out of bounds; set to default: %lf.\n", PARTIAL_RESRC);
 				} else {
 					printf("Partial resource acquisition threshold: %s\n", optarg);
 				}
@@ -216,7 +216,7 @@ void parse_args(int argc, char* argv[]) {
 				break;
 			case 'd':
 				printf("Deadlock detection and recovery activated.\n");
-				setMODE(optarg);
+				setMODE(atoi(optarg));
 				break;
 			default:
 				printf("^ See README for details.\nQuitting...\n");
@@ -371,19 +371,22 @@ void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
 /*
  *
  */
-void claimResource(Process* proc, Resource* res) { 
-	res->available -= proc->max_claims[res->type]; 
-	proc->curr_use[res->type] += proc->max_claims[res->type];
-	if(ENABLE_VERBOSE) { printf("%d Process with Process ID %d has been given %d instances of resource %d, leaving %d\n", res->total_inst, proc->id, proc->max_claims[res->type], res->type, res->available); }
+void claimResource(Process* proc, Resource* res, int how_many) { 
+	res->available -= how_many;
+	if (res->available < 0) { printf("Error: claimed more instances of resource than available. Aborting.\n"); exit(0); }
+	proc->curr_use[res->type] += how_many;
+	if (proc->curr_use[res->type] > proc->max_claims[res->type]) { printf("Error: allocated more instances of resource than necessary. Aborting.\n"); exit(0); }
+	if (ENABLE_VERBOSE) { printf("%d Process with Process ID %d has been given %d instances of resource %d, leaving %d\n", res->total_inst, proc->id, how_many, res->type, res->available); }
 }
 
 /*
  *
  */
 void releaseResource(Process* proc, Resource* res) {
-	res->available += proc->max_claims[res->type];
-	proc->curr_use[res->type] -= proc->max_claims[res->type];
-	if(ENABLE_VERBOSE) { printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type); }
+	int num_relinq = proc->curr_use[res->type];
+	res->available += num_relinq;
+	proc->curr_use[res->type] = 0;
+	if (ENABLE_VERBOSE) { printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, num_relinq, res->type); }
 }
 
 /*
@@ -407,8 +410,11 @@ void acquireResources() {
 		if (ENABLE_VERBOSE) { printf("[%d] R %d request queue: ", this_resrc->available, i); printQ(request_q); }
 		if (getSizeQ(request_q)) {
 			Process* first_proc = peekQ(request_q)->process;
-			if (this_resrc->available >= first_proc->max_claims[i]) {
-				claimResource(dequeueQ(request_q)->process, this_resrc);
+			// if the # of instances of res available meets/exceeds the number that first_proc still needs to reach max claims
+			if (this_resrc->available >= first_proc->max_claims[i] - first_proc->curr_use[i]) {
+				claimResource(dequeueQ(request_q)->process, this_resrc, first_proc->max_claims[i] - first_proc->curr_use[i]);
+			} else if (this_resrc->available) {
+				claimResource(first_proc, this_resrc, this_resrc->available);
 			}
 		}
 	}
@@ -417,20 +423,24 @@ void acquireResources() {
 /*
  *
  */
-void handleDeadlock(Process* p, PQueue_STRUCT* event_q) {
+void handleDeadlock(PQueue_STRUCT* event_q) {
 	int i;
 	setNumPrcRes(NUM_PROCS, NUM_RES);
 	for (i = 0; i < NUM_PROCS; i++) {
 		setMaxClaims(PROCESSES[i]->id, PROCESSES[i]->max_claims);
 		setCurrUse(PROCESSES[i]->id, PROCESSES[i]->curr_use);
 	}
-	int avb[] = (int)malloc(sizeof(int) * NUM_RES);
+	int* avb = (int*) malloc(sizeof(int) * NUM_RES);
 	for (i = 0; i < NUM_RES; i++) {
 		avb[i] = RESRCS[i]->available;
 	}
 	setAvailable(avb); 
-	if(runprocesses() != NULL) {
-		kill(p, event_q);
+	if(!runprocesses()) {
+		Process* greediest = PROCESSES[0];
+		for (i = 1; i < NUM_PROCS; i++) {
+			greediest = sumProcCurrUse(greediest) > sumProcCurrUse(PROCESSES[i]) ? greediest : PROCESSES[i];
+		}
+		kill(greediest, event_q);
 	}
 }
 
