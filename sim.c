@@ -21,22 +21,20 @@
 #define MAX_LENGTH_PT 100
 #define DEFAULT_PARTIAL_EXEC 0.5
 #define DEFAULT_PARTIAL_RESRC 0.5
+#define MIN_PARTIAL_EXEC 0.1
+#define MIN_PARTIAL_RES 0.1
+#define MAX_PARTIAL_EXEC 0.9
+#define MAX_PARTIAL_RES 0.9
 
-enum DEADLOCK_ALG {
-	avoid = 0,
-	detect = 1
-} algorithm;
-
-char* FILE_NAME;
-int   INCR; // 1 if user can run simulation step by step; 0 otherwise
-int   ENABLE_VERBOSE;
-int   SIM_TIME;
-int   MODE; // 0 is deadlock avoidance; 1 is deadlock detection/recovery
-int   NUM_PROCS;
-int   NUM_RES;
-int   N = 100; // MAKE THIS A COMMAND-LINE ARGUMENT!!!!!
-double   PARTIAL_EXEC; 
-double   PARTIAL_RESRC
+char*  FILE_NAME;
+int    INCR; // 1 if user can run simulation step by step; 0 otherwise
+int    ENABLE_VERBOSE;
+int    SIM_TIME;
+int    MODE; // 1 is deadlock avoidance; >1 is deadlock detection/recovery ~every MODE time units
+int    NUM_PROCS;
+int    NUM_RES;
+double PARTIAL_EXEC;
+double PARTIAL_RESRC;
 Resource** RESRCS;
 Process**  PROCESSES;
 
@@ -48,6 +46,8 @@ void setVERBOSE    () { ENABLE_VERBOSE = 1; }
 void setFILE(char *b) { FILE_NAME = b; }
 void setMODE  (int b) { MODE = b; }
 void setINCR       () { INCR = 1; }
+void setPART_EXEC (double b) { PARTIAL_EXEC = b; }
+void setPART_RES  (double b) { PARTIAL_RESRC = b; }
 
 /*
  * Default command-line arguments if unspecified by user.
@@ -58,10 +58,6 @@ void deflt() {
 		if (ENABLE_VERBOSE) { printf("Simulation will run for %d units.\n", SIM_TIME); }
 	}
 	if (FILE_NAME == NULL) { setFILE(DEFAULT_INPUT_FILE); }
-	// take as command line arguments!!!! TO DO
-	PARTIAL_EXEC = DEFAULT_PARTIAL_EXEC; 
-	PARTIAL_RESRC = DEFAULT_PARTIAL_RESRC;
-	// take as command line arguments!!!! TO DO
 	if (ENABLE_VERBOSE)    { printf("Input file set to '%s'.\n", FILE_NAME); }
 }
 
@@ -98,12 +94,10 @@ void releaseResource(Process* proc, Resource* res);
 int sumProcMaxClaims(Process* proc); 
 int sumProcCurrUse(Process* proc); 
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c);
-//void activateProcess(Process* proc);
-//void deactivateProcess(Process* proc);
 void acquireResources();
-//void evalProcessStatus(Process* proc, PQueue_STRUCT* event_q, ClockSim* c);
+void kill(Process* proc, PQueue_STRUCT* event_q);
 PQueue_STRUCT* initEventQueue();
-void handleDeadlock(int mode, Event* ev);
+void handleDeadlock(Process* p, PQueue_STRUCT* event_q);
 
 // ********************************** MAIN ************************************
 
@@ -111,13 +105,10 @@ int main(int argc, char* argv[]) {
 	printf("Initializing simulation...\n");
 	int i; // counter
 	int jump; // keeps track of units of time between current and previous timestamps
-	int thresh = N; // the threshold (timestamp) at which point the system must next check for deadlock
+	int thresh = MODE; // the threshold (timestamp) at which point the system must next check for deadlock
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
-	// test(); 			   // bankers algorithm tests
-	// test2(); 
-	//exit(0);
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
@@ -132,18 +123,16 @@ int main(int argc, char* argv[]) {
 		// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 		switch(ev->type) {
 			case 0: // process created
-				//activateProcess(ev->proc);
 				requestResources(ev->proc, ev->res);
 				break;
-			case 1: // process terminated - release resources and deactivate?
-				//deactivateProcess(ev->proc);
-				for(i = 0; i < NUM_RES; i++) { releaseResource(ev->proc, ev->res); }
+			case 1: // process terminated
+				for (i = 0; i < NUM_RES; i++) { releaseResource(ev->proc, ev->res); }
 				break;
 			default:
 				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
-		if (c.time >= thresh) {	handleDeadlock(MODE); thresh += N; }
 		acquireResources();
+		if (c.time >= thresh) {	handleDeadlock(ev->proc, event_q); thresh += MODE; }
 
 		// ************************ GATHER STATS **************************
 		jump = advance_time(&c, event_q);
@@ -162,8 +151,6 @@ int main(int argc, char* argv[]) {
 // *************************** FUNCTION DEFINITIONS ***************************
 int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
 int  system_time(ClockSim* c) { return c->time; }
-//void activateProcess(Process* proc) { proc->activated = 1; }
-//void deactivateProcess(Process* proc) { proc->activated = 0; }
 void requestResources(Process* proc, Resource* res) { enqueueQ(res->request_q, proc); }
 
 /*
@@ -173,17 +160,19 @@ void parse_args(int argc, char* argv[]) {
 	if (ENABLE_VERBOSE) { printf("Parsing command-line arguments...\n"); }
 	int opt = 0;
 	static struct option long_options[] = {
-		{"verbose",          no_argument, 0, 'v'},
-		{"sim-time",   required_argument, 0, 't'},
-		{"increment",        no_argument, 0, 'i'},
-		{"input-file", required_argument, 0, 'f'},
-		{"avoid",            no_argument, 0, 'a'},
-		{"detect",     required_argument, 0, 'd'},
-		{0,                            0, 0,  0 }
+		{"verbose",             no_argument, 0, 'v'},
+		{"sim-time",      required_argument, 0, 't'},
+		{"increment",           no_argument, 0, 'i'},
+		{"input-file",    required_argument, 0, 'f'},
+		{"partial-exec",  required_argument, 0, 'e'},
+		{"partial-resrc", required_argument, 0, 'r'},
+		{"avoid",               no_argument, 0, 'a'},
+		{"detect",        required_argument, 0, 'd'},
+		{0,                               0, 0,  0 }
 	};
 	while(1) {
 		int option_index = 0;
-		opt = getopt_long(argc, argv, "vt:if:ad:", long_options, &option_index);
+		opt = getopt_long(argc, argv, "vt:if:e:r:ad:", long_options, &option_index);
 		if (opt == -1)
 		break;
 		switch (opt) {
@@ -203,13 +192,31 @@ void parse_args(int argc, char* argv[]) {
 				printf("Input filename: %s.\n", optarg);
 				setFILE(optarg);
 				break;
+			case 'e':
+				setPART_EXEC(optarg);
+				if (PARTIAL_EXEC < MIN_PARTIAL_EXEC || PARTIAL_EXEC > MAX_PARTIAL_EXEC) {
+					setPART_EXEC(DEFAULT_PARTIAL_EXEC);
+					printf("Partial execution threshold out of bounds; set to default: %s.\n", PARTIAL_EXEC);
+				} else {
+					printf("Partial execution threshold: %s\n", optarg);
+				}
+				break;
+			case 'r':
+				setPART_RES(optarg);
+				if (PARTIAL_RES < MIN_PARTIAL_RES || PARTIAL_RES > MAX_PARTIAL_RES) {
+					setPART_RES(DEFAULT_PARTIAL_RES);
+					printf("Partial resource acquisition threshold out of bounds; set to default: %s.\n", PARTIAL_RES);
+				} else {
+					printf("Partial resource acquisition threshold: %s\n", optarg);
+				}
+				break;
 			case 'a':
 				printf("Deadlock avoidance activated.\n");
-				setMODE(avoid);
+				setMODE(1);
 				break;
 			case 'd':
 				printf("Deadlock detection and recovery activated.\n");
-				setMODE(detect);
+				setMODE(optarg);
 				break;
 			default:
 				printf("^ See README for details.\nQuitting...\n");
@@ -318,12 +325,18 @@ void read_input(char* file_name) {
 	}
 }
 
+/*
+ *
+ */
 void readResourceArray() {
 	int a; 
 	for(a = 0; a < NUM_RES; a++)
 		printf("Resource Type: %d, with total instances %d and available instances %d\n", RESRCS[a]->type, RESRCS[a]->total_inst, RESRCS[a]->available); 
 }
 
+/*
+ *
+ */
 void readProcessesArray() {
 	int b, c; 
 	for(b = 0; b < NUM_PROCS; b++) {
@@ -333,6 +346,9 @@ void readProcessesArray() {
 	}
 }
 
+/*
+ *
+ */
 PQueue_STRUCT* initEventQueue() {
 	PQueue_STRUCT* event_q = initPQ();
 	int i, j; 
@@ -342,33 +358,47 @@ PQueue_STRUCT* initEventQueue() {
 	return event_q;
 }
 
+/*
+ *
+ */
 void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
-	//activateProcess(proc);
 	int i, y;
 	for (y = 0; y < NUM_RES; y++) {
 		createAndEnqueueEvent(event_q, proc, RESRCS[y], system_time(c)+proc->interarrivalTime, 0); // type 0 is create
 	}
 }
 
+/*
+ *
+ */
 void claimResource(Process* proc, Resource* res) { 
 	res->available -= proc->max_claims[res->type]; 
 	proc->curr_use[res->type] += proc->max_claims[res->type];
 	if(ENABLE_VERBOSE) { printf("%d Process with Process ID %d has been given %d instances of resource %d, leaving %d\n", res->total_inst, proc->id, proc->max_claims[res->type], res->type, res->available); }
 }
 
+/*
+ *
+ */
 void releaseResource(Process* proc, Resource* res) {
 	res->available += proc->max_claims[res->type];
 	proc->curr_use[res->type] -= proc->max_claims[res->type];
 	if(ENABLE_VERBOSE) { printf("Process with Process ID %d has relinquished %d instances of resource %d\n", proc->id, proc->max_claims[res->type], res->type); }
 }
 
-void kill(Process* proc) {
-	//deactivateProcess(proc); 
+/*
+ *
+ */
+void kill(Process* proc, PQueue_STRUCT* event_q) {
 	int z; // release all resources
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
+	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
 }
 
+/*
+ *
+ */
 void acquireResources() {
 	int i;
 	for (i = 0; i < NUM_RES; i++) {
@@ -384,7 +414,10 @@ void acquireResources() {
 	}
 }
 
-void handleDeadlock(int mode, Event* ev) {
+/*
+ *
+ */
+void handleDeadlock(Process* p, PQueue_STRUCT* event_q) {
 	int i;
 	setNumPrcRes(NUM_PROCS, NUM_RES);
 	for (i = 0; i < NUM_PROCS; i++) {
@@ -396,13 +429,9 @@ void handleDeadlock(int mode, Event* ev) {
 		avb[i] = RESRCS[i]->available;
 	}
 	setAvailable(avb); 
-	if(!runprocesses()) {
-		rollback(Event* ev);
+	if(runprocesses() != NULL) {
+		kill(p, event_q);
 	}
-}
-
-void rollback(Event* ev) {
-
 }
 
 /*
@@ -418,13 +447,15 @@ void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res,
  */
 int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 	int curr_time = c->time;
-	// c->time = getMin(event_q)->priority;
 	NodePQ* temp = getMin(event_q);
 	c->time = temp->priority;
 	if (ENABLE_VERBOSE) { (printf("System time advancing to %d\n", c->time)); }
 	return c->time - curr_time;
 }
 
+/*
+ *
+ */
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 
 	/* CALCULATE FIGURES FOR CHECKING WHAT CASE WE ARE IN */
@@ -486,6 +517,9 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 	}
 }
 
+/*
+ *
+ */
 int sumProcMaxClaims(Process* proc) {
 	int sum, i;
 	sum = 0;  
@@ -494,6 +528,9 @@ int sumProcMaxClaims(Process* proc) {
 	return sum;
 }
 
+/*
+ *
+ */
 int sumProcCurrUse(Process* proc) {
 	int sum, i;
 	sum = 0;  
@@ -502,3 +539,16 @@ int sumProcCurrUse(Process* proc) {
 	return sum;
 }
 
+/*
+ *
+ */
+int getPartialResrc(Process* proc) {
+	// figure out partial resource status
+	int proc_partial_resrc; 
+	proc_partial_resrc = (int) (PARTIAL_RESRC * proc->max_claims[NUM_RES]);
+	// minimum is 1 
+	if(proc_partial_resrc < 1)
+		proc_partial_resrc = 1; 
+
+	return proc_partial_resrc; 
+}

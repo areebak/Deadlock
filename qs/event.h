@@ -9,7 +9,7 @@
 
 typedef struct Event {
 	Process* proc;
-	Resource* res; // if event involves resource, resrc is index of resource in RESRCS, else -1
+	Resource* res;
 	int timestamp;
 	int type; // can be 0 (indicates event to create process)
 		  // 	 or 1 (indicates event that terminate process)
