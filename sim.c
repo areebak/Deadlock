@@ -11,6 +11,7 @@
 #include "sim.h"
 #include "distribution.c"
 #include "qs/queue.h"
+#include "qs/pqueue.h"
 #include "bankers_algorithm.h"
 #include "qs/event.h"
 
@@ -37,6 +38,7 @@ float PARTIAL_EXEC;
 float PARTIAL_RESRC;
 Resource** RESRCS;
 Process**  PROCESSES;
+ProgramStats* ps; 
 
 /*
  * Configure parameters.
@@ -84,7 +86,7 @@ void parse_args(int argc, char* argv[]);
 void read_input(char* file_name);
 void readResourceArray(); 
 void readProcessesArray(); 
-int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
+int  advance_time(ClockSim *c, PQueue_STRUCT* event_q);
 int  randomExecTime(int len, int lower_bound);
 int  system_time(ClockSim* c);
 void requestResources(Process* proc);
@@ -99,6 +101,8 @@ void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp);
 void terminate(Process* proc, PQueue_STRUCT* event_q, int timestamp);
 void restartProcess(Process* proc, PQueue_STRUCT* event_q, int timestamp);
 PQueue_STRUCT* initEventQueue();
+void event_updateStats(Process* proc, int timestamp, int type);
+void kill_updateStats(Process* proc);
 void handleDeadlock(PQueue_STRUCT* event_q, int timestamp);
 void initProcessFields(Process* proc, int timestamp);
 void reinitProcessFields(Process* proc, int timestamp);
@@ -117,6 +121,10 @@ int main(int argc, char* argv[]) {
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
+	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
+
+	// test(); --> tests for bankers alg
+	// exit(0); 
 	// ***************************** INIT STATS *******************************
 
 	// *************************** RUN SIMULATION *****************************
@@ -159,6 +167,7 @@ int main(int argc, char* argv[]) {
 // *************************** FUNCTION DEFINITIONS ***************************
 int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
 int  system_time(ClockSim* c) { return c->time; }
+
 
 /*
  *
@@ -411,6 +420,8 @@ void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 	int z; // release all resources
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
+	kill_updateStats(proc);
+	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
 	// reset process
 	reinitProcessFields(proc, timestamp);
 	createAndEnqueueEvent(event_q, proc, timestamp, 0); // type 0 is create
@@ -492,6 +503,26 @@ void handleDeadlock(PQueue_STRUCT* event_q, int timestamp) {
  */
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type) {
 	enqueuePQ(event_q, createEvent(proc, timestamp, type));
+	event_updateStats(proc, timestamp, type); 
+}
+
+void event_updateStats(Process* proc, int timestamp, int type) {
+	// helper vars
+	int id = proc->id; 
+	int proc_turnaroundTime = timestamp - proc->creationTime; 
+	int proc_executionTime = proc->actual_execTime;
+	// check type of event and update stats accordingly
+	if(type) {	// This is a termination event
+		ps->numCompleted[id]++;	// increment processes completed for this id
+		ps->total_turnaround[id] += proc_turnaroundTime; // add turnaroundtime for this id
+		ps->total_execution[id] += proc_executionTime; // add executiontime for this id
+	} else { 	// This is a creation event
+		ps->numCreated[id]++;	// increment processes created for this id
+	}
+}
+
+void kill_updateStats(Process* proc) {
+	ps->numKills[proc->id]++; 
 }
 
 /*
@@ -519,7 +550,7 @@ void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom) {
 		proc->timeRunSoFar += proc->end_firstPhase - proc->start_firstPhase; 
 	else {
 		if(proc->executing) {
-			int t;
+			int t = 0;
 			if(proc->start_firstPhase > -1) { 		// first phase has begun
 				if(proc->end_firstPhase == -1) { 	// ... and first phase has not ended
 					t = timestamp - proc->start_firstPhase;
