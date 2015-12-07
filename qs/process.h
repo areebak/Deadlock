@@ -19,8 +19,16 @@ typedef struct Process {
 	/* status */
 	int executing; // says if a process is executing or not, init to 0
 	/* statistics */
-	int startTime; // process starts executing at this time, init to -1 
-	int activeTime; // portion of  turnaround time when  process is running not idle
+	//int startTime; // process starts executing at this time, init to -1 
+	int timeRunSoFar; // portion of  turnaround time when  process is running not idle
+	//int timeRunSoFar_lastUpdatedAt;
+
+	int creationTime;
+	int start_firstPhase;
+	int end_firstPhase; 
+	int start_finalPhase; 
+	int end_finalPhase;
+
 } Process;
 
 #endif
