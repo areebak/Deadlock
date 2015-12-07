@@ -9,7 +9,6 @@
 
 typedef struct Event {
 	Process* proc;
-	Resource* res;
 	int timestamp;
 	int type; // can be 0 (indicates event to create process)
 		  // 	 or 1 (indicates event that terminate process)
@@ -18,7 +17,7 @@ typedef struct Event {
 		  // 	 or 4 (indicates event that will let process release resource)
 } Event;
 
-Event* createEvent(Process* proc, Resource* res, int timestamp, int type);
+Event* createEvent(Process* proc, int timestamp, int type);
 // int    eventString(Event* ev);
 
 #endif

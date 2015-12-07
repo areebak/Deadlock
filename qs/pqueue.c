@@ -141,9 +141,9 @@ void printPQ(PQueue_STRUCT* pq){
 
   while (node != NULL){
     if (node->next != NULL)
-      printf("             [P: %d][R: %d][t: %d](%d)->\n", node->event->proc->id, node->event->res->type, node->event->timestamp, node->event->type);
+      printf("             [P: %d][t: %d](%d)->\n", node->event->proc->id, node->event->timestamp, node->event->type);
     else
-      printf("             [P: %d][R: %d][t: %d](%d)", node->event->proc->id, node->event->res->type, node->event->timestamp, node->event->type);
+      printf("             [P: %d][t: %d](%d)", node->event->proc->id, node->event->timestamp, node->event->type);
     node = node->next;
   }
   printf("\n");
