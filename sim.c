@@ -150,11 +150,11 @@ int main(int argc, char* argv[]) {
 		jump = advance_time(&c, event_q);
 	}
  	// ***************************** OUTPUT STATS *****************************
-	printf("\n--------- START PRINTING SIMULATION STATISTICS -----------\n");
+	printf("\n--------- START PRINTING SIMULATION STATISTICS -----------\n\n");
 	// created, killed, completed - individual processes
 	int x; 
 	for(x = 0; x < NUM_PROCS; x++) {
-		printf("For process witd id %d, number of process created, killed and completed is %d, %d and %d respectively\n", x, ps->numCreated[x], ps->numKills[x], ps->numCompleted[x]);
+		printf("For process %d, number of process created, killed and completed are %d, %d and %d respectively\n", x, ps->numCreated[x], ps->numKills[x], ps->numCompleted[x]);
 	}
 	// created, killed, completed - totals
 	printf("\nFor the simulation, total processes created, killed and completed are %d, %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
@@ -162,11 +162,11 @@ int main(int argc, char* argv[]) {
 	printf("Ratio of processes completed to created is %lf\n", ratio_completedToCreated(ps));
 	printf("Ratio of processes killed to created is %lf\n", ratio_killedToCreated(ps));
 	// turnaround and execution - totals
-	printf("\nFor the simulation, total turnaround time and execution time for all the process instances that were completed are %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
+	printf("\nFor the simulation, total turnaround time and execution time for all the process instances completed are %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
 	// turnaround and execution - ratios
 	printf("Ratio of total execution to turnaround is %lf\n", ratio_executionToTurnaround(ps));
 	// thruput
-	printf("Throughput of the simulation is %lf\n", thruput(ps, SIM_TIME));
+	printf("Throughput of the simulation with processes completed %d and simulation time %d is %lf\n", total_completed(ps), SIM_TIME, thruput(ps, SIM_TIME));
 	printf("\n--------- END PRINTING SIMULATION STATISTICS -----------\n");
 
 	printf("===================================================================================\n\nSimulation terminated.\n");
