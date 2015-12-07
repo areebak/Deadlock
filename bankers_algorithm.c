@@ -229,7 +229,7 @@ int runprocesses() {
 		safe = 0; // anticipate unsafe state, walk through executed processes, looking for a process to run next
 		int p, r;
 		for(p = 0; p < numPrc; p++) {// this loop will run as long as we don't execute all our processes
-			printf("Processes being executed is %d\n", p);
+			// printf("Processes being executed is %d\n", p);
 
 			if(unexecuted[p]) { 			// if this process has not been run yet
 				runningAProcess = 1; 
@@ -243,7 +243,7 @@ int runprocesses() {
 				if(runningAProcess) {
 					unexecuted[p] = 0; // if it is safe to run, execute it
 					safe = 1; // safe process search in process
-					printf("Executing process with pID %d\n", p);
+					// printf("Executing process with pID %d\n", p);
 					safeState[numPrc - processesLeft] = p; 
 					processesLeft--; 
 					int i; 
@@ -256,13 +256,13 @@ int runprocesses() {
 			}
 		}
 
-		if(safe) {
-			printf("Safe state found\n");
-			printSafeSeq(); 
-		} else {
-			printf("Safe state not found\n");
-			break;
-		}
+		// if(safe) {
+		// 	printf("Safe state found\n");
+		// 	printSafeSeq(); 
+		// } else {
+		// 	printf("Safe state not found\n");
+		// 	break;
+		// }
 	}
 
 	return safe;
