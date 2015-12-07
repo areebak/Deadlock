@@ -16,6 +16,7 @@ int * available; 		// index i holds number of instances of resource i available 
 int * unexecuted; 		// index i says whether process i has been executed yet or not
 int * safeState;  		// holds safe sequence
 
+int maxRuns; 
 int numPrc = defaultPrc; // number of processes available
 int numRes = defaultRes; // number of resources available
 
@@ -36,6 +37,7 @@ int setNumPrcRes(int setPrc, int setRes) {
 	
 	numPrc = setPrc; 
 	numRes = setRes;
+	maxRuns = numPrc * numPrc; 
 	int i, j, k, l;
 
 	maxClaims = (int**) malloc ( numPrc * sizeof(int *)); 
@@ -225,6 +227,7 @@ int runprocesses() {
 	int runningAProcess = 1; 
 	int safe = 0;
 	int processesLeft = numPrc;
+	int currentRuns = 0; 
 	while(processesLeft != 0) { // while all processes have not had their turn
 		safe = 0; // anticipate unsafe state, walk through executed processes, looking for a process to run next
 		int p, r;
@@ -258,9 +261,10 @@ int runprocesses() {
 	}
 
 	if(safe)
-		printf("Safe state found");
-	else
-		printf("Safe state not found");
+		printf("Safe state found\n");
+	else 
+		printf("Safe state not found\n");
+
 	return safe;
 }
 
