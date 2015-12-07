@@ -87,12 +87,12 @@ void readProcessesArray();
 int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
 int  randomExecTime(int len, int lower_bound);
 int  system_time(ClockSim* c);
-void requestResources(Process* proc, Resource* res);
+void requestResources(Process* proc);
 void claimResource(Process* proc, Resource* res, int how_many);
-void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type);
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type);
 void releaseResource(Process* proc, Resource* res); 
-int sumProcMaxClaims(Process* proc); 
-int sumProcCurrUse(Process* proc); 
+int  sumProcMaxClaims(Process* proc); 
+int  sumProcCurrUse(Process* proc); 
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c);
 void acquireResources();
 void kill(Process* proc, PQueue_STRUCT* event_q);
@@ -123,10 +123,10 @@ int main(int argc, char* argv[]) {
 		// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 		switch(ev->type) {
 			case 0: // process created
-				requestResources(ev->proc, ev->res);
+				requestResources(ev->proc);
 				break;
 			case 1: // process terminated
-				for (i = 0; i < NUM_RES; i++) { releaseResource(ev->proc, ev->res); }
+				for (i = 0; i < NUM_RES; i++) { releaseResource(ev->proc, RESRCS[i]); }
 				break;
 			default:
 				printf("Failed; event type '%d' unknown.\n", ev->type);
@@ -151,7 +151,16 @@ int main(int argc, char* argv[]) {
 // *************************** FUNCTION DEFINITIONS ***************************
 int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
 int  system_time(ClockSim* c) { return c->time; }
-void requestResources(Process* proc, Resource* res) { enqueueQ(res->request_q, proc); }
+
+/*
+ *
+ */
+void requestResources(Process* proc) {
+	int i;
+	for (i = 0; i < NUM_RES; i ++) {
+		enqueueQ(RESRCS[i]->request_q, proc);
+	}
+}
 
 /*
  * Read command-line arguments.
@@ -351,10 +360,9 @@ void readProcessesArray() {
  */
 PQueue_STRUCT* initEventQueue() {
 	PQueue_STRUCT* event_q = initPQ();
-	int i, j; 
+	int i; 
 	for (i = 0; i < NUM_PROCS; i++)
-		for (j = 0; j < NUM_RES; j++)
-			createAndEnqueueEvent(event_q, PROCESSES[i], RESRCS[j], 0, 0); // type 0 is create
+		createAndEnqueueEvent(event_q, PROCESSES[i], 0, 0); // type 0 is create
 	return event_q;
 }
 
@@ -362,10 +370,7 @@ PQueue_STRUCT* initEventQueue() {
  *
  */
 void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
-	int i, y;
-	for (y = 0; y < NUM_RES; y++) {
-		createAndEnqueueEvent(event_q, proc, RESRCS[y], system_time(c)+proc->interarrivalTime, 0); // type 0 is create
-	}
+	createAndEnqueueEvent(event_q, proc, system_time(c)+proc->interarrivalTime, 0); // type 0 is create
 }
 
 /*
@@ -447,8 +452,8 @@ void handleDeadlock(PQueue_STRUCT* event_q) {
 /*
  * Creates new event and enqueues in event queue.
  */
-void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, Resource* res, int timestamp, int type) {
-	enqueuePQ(event_q, createEvent(proc, res, timestamp, type));
+void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type) {
+	enqueuePQ(event_q, createEvent(proc, timestamp, type));
 }
 
 /*
@@ -517,9 +522,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 		case 2: // we have full max claim req - begin final execution phase!
 			// execute final phase, enqueue termination event
 			proc->executing = 1;
-			int i; 
-			for(i = 0; i < NUM_RES; i++)
-				createAndEnqueueEvent(event_q, proc, RESRCS[i], system_time(c)+(proc->actual_execTime - proc->activeTime), 1); // enqueue termination time for after final execution phase
+			createAndEnqueueEvent(event_q, proc, system_time(c)+(proc->actual_execTime - proc->activeTime), 1); // enqueue termination time for after final execution phase
 			if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->activeTime)); }
 			break;
 		default:
