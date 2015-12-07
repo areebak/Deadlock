@@ -4,6 +4,7 @@
 
 #include "simStats.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 ProgramStats* initPS(int numProcs){
   ProgramStats* ps = (ProgramStats*)malloc(sizeof(ProgramStats)); 
@@ -28,6 +29,8 @@ void initPSFields(ProgramStats* ps, int numProcs) {
 	}
 }
 
+/*
+
 int numCreated_proc(ProgramStats* ps, int procID) {
 	return ps->numCreated[procID];
 }
@@ -38,7 +41,7 @@ int numKills_proc(ProgramStats* ps, int procID) {
 
 int numCompleted_proc(ProgramStats* ps, int procID) {
 	return ps->numCompleted[procID];
-}
+}*/
 
 int	total_created(ProgramStats* ps) {
 	int i;
@@ -97,13 +100,14 @@ int	total_execution(ProgramStats* ps) {
 	return total;
 }
 
-double ratio_turnaroundToexecution(ProgramStats* ps) {
+double ratio_executionToTurnaround(ProgramStats* ps) {
 	double turnaround = (double)(total_turnaround(ps));
 	double execution = (double)(total_execution(ps));
-	return turnaround / execution;
+	return execution / turnaround;
 }
 
 double  thruput(ProgramStats* ps, int stop_time) {
-	double completed = (double) (total_completed(ps));
-	return completed / stop_time; 
+	int completed = total_completed(ps);
+	printf("completed is %d\n", completed);
+	return  (double) stop_time / completed; 
 }

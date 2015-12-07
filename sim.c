@@ -118,6 +118,7 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
+	//exit(0);
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
@@ -150,7 +151,25 @@ int main(int argc, char* argv[]) {
 		jump = advance_time(&c, event_q);
 	}
  	// ***************************** OUTPUT STATS *****************************
-	///////////////////// DO THIS TOO
+	printf("\n--------- START PRINTING SIMULATION STATISTICS -----------\n\n");
+	// created, killed, completed - individual processes
+	int x; 
+	for(x = 0; x < NUM_PROCS; x++) {
+		printf("For process %d, number of process created, killed and completed are %d, %d and %d respectively\n", x, ps->numCreated[x], ps->numKills[x], ps->numCompleted[x]);
+	}
+	// created, killed, completed - totals
+	printf("\nFor the simulation, total processes created, killed and completed are %d, %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
+	// created, killed, completed - ratios
+	printf("Ratio of processes completed to created is %lf\n", ratio_completedToCreated(ps));
+	printf("Ratio of processes killed to created is %lf\n", ratio_killedToCreated(ps));
+	// turnaround and execution - totals
+	printf("\nFor the simulation, total turnaround time and execution time for all the process instances completed are %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
+	// turnaround and execution - ratios
+	printf("Ratio of total execution to turnaround is %lf\n", ratio_executionToTurnaround(ps));
+	// thruput
+	printf("Throughput of the simulation with processes completed %d and simulation time %d is %lf\n", total_completed(ps), SIM_TIME, thruput(ps, SIM_TIME));
+	printf("\n--------- END PRINTING SIMULATION STATISTICS -----------\n");
+
 	printf("===================================================================================\n\nSimulation terminated.\n");
 	// ******************************************************************************
 	//
@@ -267,6 +286,8 @@ void read_input(char* file_name) {
 		// vars to help track line number 
 		int mcStart = 3; // beginning of line numbers specifying max claims
 		int mcEnds; 	 // end of line numbers specifying max claims
+		int cuStart; 
+		int cuEnds;
 		int iatStart; 	 // beginning of line numbers specifying mean length of time a process holds resource
 		int iatEnds; 	 // end of line numbers specifying request intervals between process asking for resource 
 		int etStart;	 // beginning of line numbers specifying length of time process retains resource
@@ -280,7 +301,9 @@ void read_input(char* file_name) {
 				printf("Num processes is %d\n", NUM_PROCS);
 				// init index vars since we know num procs
 				mcEnds = mcStart + NUM_PROCS; 
-				iatStart = mcEnds; 
+				cuStart = mcEnds; 
+				cuEnds = cuStart + NUM_PROCS; 
+				iatStart = cuEnds; 
 				iatEnds = iatStart + NUM_PROCS; 
 				etStart = iatEnds;
 				etEnds = etStart + NUM_PROCS; 
@@ -306,10 +329,10 @@ void read_input(char* file_name) {
 				int index1 = lineNum - mcStart; 
 				Process* PR = malloc(sizeof(Process)); // create new process
 				PROCESSES[index1] = PR; 
-				int* curr_use = malloc(sizeof(int) * NUM_RES);
-				int a; 
+				//int* curr_use = malloc(sizeof(int) * NUM_RES);
+				/*int a; 
 				for(a = 0; a < NUM_RES; a++)
-					curr_use[a] = 0;
+					curr_use[a] = 0;*/
 				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
 				int i = 0; 
 				char* numMC; // read line
@@ -319,8 +342,28 @@ void read_input(char* file_name) {
 				} 
 				// initialize process vars read in from input file
 				PROCESSES[index1]->id = index1; 
-				PROCESSES[index1]->curr_use = curr_use;
+				//PROCESSES[index1]->curr_use = curr_use;
 				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
+				lineNum++;  								// go to next line
+			} else if(lineNum >= cuStart && lineNum < cuEnds)  {// lines relevant to maxclaims for each resource - each line specifies max claims array for one process
+				int index11 = lineNum - cuStart; 
+				//Process* PR = malloc(sizeof(Process)); // create new process
+				//PROCESSES[index1] = PR; 
+				int* curr_use = malloc(sizeof(int) * NUM_RES);
+				/*int a; 
+				for(a = 0; a < NUM_RES; a++)
+					curr_use[a] = 0;*/
+				//int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
+				int i = 0; 
+				char* numCU; // read line
+				for(numCU = strtok(line, " "); numCU != NULL; numCU = strtok(NULL, " ")) {
+					curr_use[i] = atoi(numCU); // store maxClaims array
+					i++;
+				} 
+				// initialize process vars read in from input file
+				//PROCESSES[index1]->id = index1; 
+				PROCESSES[index11]->curr_use = curr_use;
+				//PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
 				lineNum++;  								// go to next line
 			} else if(lineNum >= iatStart && lineNum < iatEnds) {// lines relevant to interarrival time for each process - each line specifies interarrival time for one process
 				int index2 = lineNum - iatStart; 
@@ -371,7 +414,7 @@ void readProcessesArray() {
 	for(b = 0; b < NUM_PROCS; b++) {
 		printf("Process at index: %d\n", b);  
 		for( c = 0; c < NUM_RES; c++) 
-			printf("with id %d, exectime %d and interarrival time %d has, for R%d, max claims %d\n", PROCESSES[b]->id, PROCESSES[b]->avg_execTime, PROCESSES[b]->interarrivalTime, c, PROCESSES[b]->max_claims[c]);
+			printf("with id %d, exectime %d and interarrival time %d has, for R%d, max claims %d and curr claims %d\n", PROCESSES[b]->id, PROCESSES[b]->avg_execTime, PROCESSES[b]->interarrivalTime, c, PROCESSES[b]->max_claims[c], PROCESSES[b]->curr_use[c]);
 	}
 }
 
@@ -490,6 +533,9 @@ void handleDeadlock(PQueue_STRUCT* event_q, int timestamp) {
 			greediest = sumProcCurrUse(greediest) > sumProcCurrUse(PROCESSES[i]) ? greediest : PROCESSES[i];
 		}
 		kill(greediest, event_q, timestamp);
+		if(ENABLE_VERBOSE) {
+			printf("Deadlock found!\nKilling process with id %d to resolve deadlock...\n", greediest->id);
+		}
 	}
 }
 

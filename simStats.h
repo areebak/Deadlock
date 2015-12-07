@@ -17,10 +17,10 @@ typedef struct ProgramStats {
 // init program stats
 ProgramStats* 	initPS(int numProcs);
 void 			initPSFields(ProgramStats* ps, int numProcs);
-// process id specific stats
+/* process id specific stats 
 int  			numCreated_proc(ProgramStats* ps, int procID);
 int  			numKills_proc(ProgramStats* ps, int procID);
-int  			numCompleted_proc(ProgramStats* ps, int procID);
+int  			numCompleted_proc(ProgramStats* ps, int procID);*/
 // total process stats
 int				total_created(ProgramStats* ps);
 int 			total_kills(ProgramStats* ps); 
@@ -32,7 +32,7 @@ double 			ratio_killedToCreated(ProgramStats* ps);
 int  			total_turnaround(ProgramStats* ps);
 int  			total_execution(ProgramStats* ps);
 // total time ratios
-double  		ratio_turnaroundToexecution(ProgramStats* ps);
+double  		ratio_executionToTurnaround(ProgramStats* ps);
 double  		thruput(ProgramStats* ps, int stop_time);
 
 #endif
