@@ -150,6 +150,12 @@ int main(int argc, char* argv[]) {
 	}
  	// ***************************** OUTPUT STATS *****************************
 	printf("\n--------- START PRINTING SIMULATION STATISTICS -----------\n\n");
+	
+	printf("Simulation characteristics:");  
+	if(MODE == 1)
+		printf(" We are simulating deadlock avoidance.\n"); 
+	else if(MODE > 1) 
+		printf(" We are simulating deadlock detection - banker's algorithm run every %d times to detect!\n", MODE); 
 	// created, killed, completed - individual processes
 	int x; 
 	for(x = 0; x < NUM_PROCS; x++) {
@@ -643,8 +649,11 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 				// execute final phase, enqueue termination event
 				proc->start_finalPhase = system_time(c);
 				proc->executing = 1;
-				createAndEnqueueEvent(event_q, proc, system_time(c)+(proc->actual_execTime - proc->timeRunSoFar), 1); // enqueue termination time for after final execution phase
-				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d\n", proc->id, system_time(c)+(proc->actual_execTime - proc->timeRunSoFar)); }
+				int terminateAfter = 0; 
+				if(proc->actual_execTime - proc->timeRunSoFar >= 0)
+					terminateAfter = proc->actual_execTime - proc->timeRunSoFar;
+				createAndEnqueueEvent(event_q, proc, system_time(c)+terminateAfter, 1); // enqueue termination time for after final execution phase
+				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d\n", proc->id, system_time(c) + terminateAfter); }
 			}
 			break;
 		default:

@@ -1,0 +1,20 @@
+
+--------- START PRINTING SIMULATION STATISTICS -----------
+
+Simulation characteristics: We are simulating deadlock avoidance.
+For process 0, number of process created, killed and completed are 6, 2 and 3 respectively
+For process 1, number of process created, killed and completed are 4, 2 and 1 respectively
+For process 2, number of process created, killed and completed are 4, 2 and 2 respectively
+For process 3, number of process created, killed and completed are 7, 3 and 3 respectively
+
+For the simulation, total processes created, killed and completed are 21, 9 and 9 respectively
+Ratio of processes completed to created is 0.428571
+Ratio of processes killed to created is 0.428571
+
+For the simulation, total turnaround time and execution time for all the process instances completed are 170 and 54 respectively
+Ratio of total execution to turnaround is 0.317647
+Throughput of the simulation with processes completed 9 and simulation time 50 is 5.555556
+
+--------- END PRINTING SIMULATION STATISTICS -----------
+
+===================================================================================

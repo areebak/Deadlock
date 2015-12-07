@@ -94,5 +94,5 @@ double ratio_executionToTurnaround(ProgramStats* ps) {
 
 double  thruput(ProgramStats* ps, int stop_time) {
 	int completed = total_completed(ps);
-	return  (double) stop_time / completed; 
+	return  ((double) (completed)) / stop_time; 
 }

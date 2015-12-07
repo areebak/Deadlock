@@ -1,0 +1,19 @@
+--------- START PRINTING SIMULATION STATISTICS -----------
+
+Simulation characteristics: We are simulating deadlock detection - banker's algorithm run every 5 times to detect!
+For process 0, number of process created, killed and completed are 4, 2 and 1 respectively
+For process 1, number of process created, killed and completed are 2, 1 and 0 respectively
+For process 2, number of process created, killed and completed are 3, 2 and 0 respectively
+For process 3, number of process created, killed and completed are 4, 2 and 1 respectively
+
+For the simulation, total processes created, killed and completed are 13, 7 and 2 respectively
+Ratio of processes completed to created is 0.153846
+Ratio of processes killed to created is 0.538462
+
+For the simulation, total turnaround time and execution time for all the process instances completed are 27 and 22 respectively
+Ratio of total execution to turnaround is 0.814815
+Throughput of the simulation with processes completed 2 and simulation time 50 is 25.000000
+
+--------- END PRINTING SIMULATION STATISTICS -----------
+
+===================================================================================
