@@ -22,6 +22,7 @@ typedef struct Process {
 	//int startTime; // process starts executing at this time, init to -1 
 	int timeRunSoFar; // portion of  turnaround time when  process is running not idle
 	//int timeRunSoFar_lastUpdatedAt;
+	int terminationEnqueued; 
 
 	int creationTime;
 	int start_firstPhase;

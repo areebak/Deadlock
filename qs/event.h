@@ -18,6 +18,5 @@ typedef struct Event {
 } Event;
 
 Event* createEvent(Process* proc, int timestamp, int type);
-// int    eventString(Event* ev);
 
 #endif

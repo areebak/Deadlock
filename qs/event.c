@@ -11,8 +11,3 @@ Event* createEvent(Process* proc, int timestamp, int type) {
 	ev->type = type;
 	return ev;
 }
-
-// int eventString(Event* ev) {
-// 	printf("EVENT\tProcess %p\t %d(%d)", ev->p, ev->timestamp, ev->type);
-// 	return 0;
-// }

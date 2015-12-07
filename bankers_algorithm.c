@@ -278,6 +278,3 @@ void printSafeSeq() {
 			printf("%d\n", safeState[i]);
 		return;
 }
-
-
-

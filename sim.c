@@ -15,8 +15,6 @@
 #include "bankers_algorithm.h"
 #include "qs/event.h"
 
-// copied directly from http://stackoverflow.com/questions/3437404/min-and-max-in-c
-// #define MAX(a,b) (((a)>(b))?(a):(b))
 #define DEFAULT_INPUT_FILE "input/input.txt"
 #define DEFAULT_SIM_TIME 500
 #define MAX_LENGTH_PT 100
@@ -163,20 +161,14 @@ int main(int argc, char* argv[]) {
 	printf("Ratio of processes completed to created is %lf\n", ratio_completedToCreated(ps));
 	printf("Ratio of processes killed to created is %lf\n", ratio_killedToCreated(ps));
 	// turnaround and execution - totals
-	printf("\nFor the simulation, total turnaround time and execution time for all the process instances completed are %d and %d respectively\n", total_created(ps), total_kills(ps), total_completed(ps));
+	printf("\nFor the simulation, total turnaround time and execution time for all the process instances completed are %d and %d respectively\n", total_turnaround(ps), total_execution(ps));
 	// turnaround and execution - ratios
 	printf("Ratio of total execution to turnaround is %lf\n", ratio_executionToTurnaround(ps));
 	// thruput
 	printf("Throughput of the simulation with processes completed %d and simulation time %d is %lf\n", total_completed(ps), SIM_TIME, thruput(ps, SIM_TIME));
-	printf("\n--------- END PRINTING SIMULATION STATISTICS -----------\n");
+	printf("\n--------- END PRINTING SIMULATION STATISTICS -----------\n\n");
 
 	printf("===================================================================================\n\nSimulation terminated.\n");
-	// ******************************************************************************
-	//
-	//          TODO:  REMEMBER TO FREE MEMORY WE MALLOC!! >>> DOES THIS MEAN WHEN WE
-	//                 DEQUEUE EVENTS AND KILL PROCESSES? RESOURCES CAN BE UNDONE AT SIMULATION TERMINATION
-	//
-	// ******************************************************************************
 }
 
 // *************************** FUNCTION DEFINITIONS ***************************
@@ -329,10 +321,6 @@ void read_input(char* file_name) {
 				int index1 = lineNum - mcStart; 
 				Process* PR = malloc(sizeof(Process)); // create new process
 				PROCESSES[index1] = PR; 
-				//int* curr_use = malloc(sizeof(int) * NUM_RES);
-				/*int a; 
-				for(a = 0; a < NUM_RES; a++)
-					curr_use[a] = 0;*/
 				int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
 				int i = 0; 
 				char* numMC; // read line
@@ -342,18 +330,11 @@ void read_input(char* file_name) {
 				} 
 				// initialize process vars read in from input file
 				PROCESSES[index1]->id = index1; 
-				//PROCESSES[index1]->curr_use = curr_use;
 				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
 				lineNum++;  								// go to next line
 			} else if(lineNum >= cuStart && lineNum < cuEnds)  {// lines relevant to maxclaims for each resource - each line specifies max claims array for one process
 				int index11 = lineNum - cuStart; 
-				//Process* PR = malloc(sizeof(Process)); // create new process
-				//PROCESSES[index1] = PR; 
 				int* curr_use = malloc(sizeof(int) * NUM_RES);
-				/*int a; 
-				for(a = 0; a < NUM_RES; a++)
-					curr_use[a] = 0;*/
-				//int* max_claims = malloc(sizeof(int) * NUM_RES); // init max claims array
 				int i = 0; 
 				char* numCU; // read line
 				for(numCU = strtok(line, " "); numCU != NULL; numCU = strtok(NULL, " ")) {
@@ -361,9 +342,7 @@ void read_input(char* file_name) {
 					i++;
 				} 
 				// initialize process vars read in from input file
-				//PROCESSES[index1]->id = index1; 
 				PROCESSES[index11]->curr_use = curr_use;
-				//PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
 				lineNum++;  								// go to next line
 			} else if(lineNum >= iatStart && lineNum < iatEnds) {// lines relevant to interarrival time for each process - each line specifies interarrival time for one process
 				int index2 = lineNum - iatStart; 
@@ -386,6 +365,7 @@ void read_input(char* file_name) {
  *
  */
 void initProcessFields(Process* proc, int timestamp) {
+	proc->terminationEnqueued = 0; 
 	proc->timeRunSoFar = 0;
 	proc->creationTime = timestamp;
 	proc->actual_execTime = randomExecTime(proc->avg_execTime, 0);
@@ -459,7 +439,6 @@ void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
 	kill_updateStats(proc);
-	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
 	// reset process
 	reinitProcessFields(proc, timestamp);
 	createAndEnqueueEvent(event_q, proc, timestamp, 0); // type 0 is create
@@ -481,6 +460,7 @@ void terminate(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
  *
  */
 void reinitProcessFields(Process* proc, int timestamp) {
+	proc->terminationEnqueued = 0;
 	proc->actual_execTime = randomExecTime(proc->avg_execTime, 0);
 	proc->executing = 0; 
 	updateTimeRunSoFar(proc, timestamp, 0);
@@ -649,6 +629,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 					updateTimeRunSoFar(proc, system_time(c), 1);
 					if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d\n", proc->id, proc->timeRunSoFar); }					
 				}
+				printf("WE ARE IN A MYSTERIOUS PLACE\n");
 			} else {
 				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
 				proc->start_firstPhase = system_time(c);
@@ -657,7 +638,8 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 			}
 			break; 
 		case 2: // we have full max claim req - begin final execution phase!
-			if (!proc->executing) {
+			if (!proc->terminationEnqueued) {
+				proc->terminationEnqueued = 1; 
 				// execute final phase, enqueue termination event
 				proc->start_finalPhase = system_time(c);
 				proc->executing = 1;

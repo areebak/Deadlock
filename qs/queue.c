@@ -1,7 +1,6 @@
 // queue.c
-// Thao Bach
-// Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal & Helena Kleinschmidt
+// Adapted from CPUscheduler/pqq/queue.c (Bach, Kleinschmidt, Zhumabekova)
 
 #include "queue.h"
 

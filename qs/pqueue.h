@@ -1,7 +1,6 @@
 // pqueue.h
-// Thao Bach
-// Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal & Helena Kleinschmidt
+// Adapted from CPUscheduler/pqq/pqueue.h (Bach, Kleinschmidt, Zhumabekova)
 
 #ifndef PQ_H
 #define PQ_H
