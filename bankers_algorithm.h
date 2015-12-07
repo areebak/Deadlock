@@ -4,9 +4,7 @@
 * CS 322 Final Project
 */ 
 
-extern int setNumPrc(int setPrc);
-
-extern int setNumRes(int setRes);
+extern int setNumPrcRes(int setPrc, int setRes);
 
 extern void initArrays();
 
