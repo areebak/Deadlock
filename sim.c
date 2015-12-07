@@ -96,11 +96,14 @@ int  sumProcMaxClaims(Process* proc);
 int  sumProcCurrUse(Process* proc); 
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c);
 void acquireResources();
-void kill(Process* proc, PQueue_STRUCT* event_q);
+void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp);
+void restartProcess(Process* proc, PQueue_STRUCT* event_q, int timestamp);
 PQueue_STRUCT* initEventQueue();
-void handleDeadlock(PQueue_STRUCT* event_q);
 void event_updateStats(Process* proc, int timestamp, int type);
 void kill_updateStats(Process* proc);
+void handleDeadlock(PQueue_STRUCT* event_q, int timestamp);
+void initProcessFields(Process* proc, int timestamp);
+void reinitProcessFields(Process* proc, int timestamp);
 
 // ********************************** MAIN ************************************
 
@@ -115,6 +118,7 @@ int main(int argc, char* argv[]) {
 	initProgramStats(); 
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
+
 	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
 
 	// test(); --> tests for bankers alg
@@ -139,7 +143,7 @@ int main(int argc, char* argv[]) {
 				printf("Failed; event type '%d' unknown.\n", ev->type);
 		}
 		acquireResources();
-		if (c.time >= thresh) {	handleDeadlock(event_q); thresh = (thresh + MODE < c.time) ? (c.time + MODE) : (thresh + MODE); }
+		if (c.time >= thresh) {	handleDeadlock(event_q, system_time(&c)); thresh = (thresh + MODE < c.time) ? (c.time + MODE) : (thresh + MODE); }
 
 		// ************************ GATHER STATS **************************
 		jump = advance_time(&c, event_q);
@@ -312,14 +316,9 @@ void read_input(char* file_name) {
 				for(numMC = strtok(line, " "); numMC != NULL; numMC = strtok(NULL, " ")) {
 					max_claims[i] = atoi(numMC); // store maxClaims array
 					i++;
-				} // PROCESSES[index1]->activated = 0;
-
-				// initialize process vars
-
-
-
+				} 
+				// initialize process vars read in from input file
 				PROCESSES[index1]->id = index1; 
-
 				PROCESSES[index1]->curr_use = curr_use;
 				PROCESSES[index1]->max_claims = max_claims; // set maxClaims array
 				lineNum++;  								// go to next line
@@ -329,11 +328,9 @@ void read_input(char* file_name) {
 				lineNum++; 
 			} else if(lineNum >= etStart && lineNum < etEnds) { // lines relevant to interarrival time for each process - each line specifies interarrival time for one process
 				int index3 = lineNum - etStart; 
-				PROCESSES[index3]->avg_execTime = atoi(line); 
-				PROCESSES[index3]->actual_execTime = randomExecTime(PROCESSES[index3]->avg_execTime, 0);
-				PROCESSES[index3]->executing = 0; 
-				PROCESSES[index3]->startTime = -1; 
-				PROCESSES[index3]->activeTime = 0; 
+				PROCESSES[index3]->avg_execTime = atoi(line);
+				// set default values of remaining process fields
+				initProcessFields(PROCESSES[index3], 0); // time = 0
 				lineNum++; 
 			} 
 		} readResourceArray(); 
@@ -341,6 +338,19 @@ void read_input(char* file_name) {
 		fclose(file);
 	}
 }
+
+void initProcessFields(Process* proc, int timestamp) {
+	proc->timeRunSoFar_lastUpdatedAt = 0;
+	proc->timeRunSoFar = 0;
+	proc->creationTime = timestamp;
+	proc->actual_execTime = randomExecTime(proc->avg_execTime, 0);
+	proc->executing = 0; 
+	proc->start_firstPhase = -1; 
+	proc->start_finalPhase = -1; 
+	proc->end_firstPhase = -1; 
+	proc->end_finalPhase = -1;
+}
+
 
 /*
  *
@@ -376,10 +386,10 @@ PQueue_STRUCT* initEventQueue() {
 
 /*
  *
- */
-void restartProcess(Process* proc, PQueue_STRUCT* event_q, ClockSim* c) {
-	createAndEnqueueEvent(event_q, proc, system_time(c)+proc->interarrivalTime, 0); // type 0 is create
-}
+ *
+void restartProcess(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
+	createAndEnqueueEvent(event_q, proc, timestamp, 0); // type 0 is create
+}*/
 
 /*
  *
@@ -405,13 +415,30 @@ void releaseResource(Process* proc, Resource* res) {
 /*
  *
  */
-void kill(Process* proc, PQueue_STRUCT* event_q) {
+void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 	int z; // release all resources
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
 	kill_updateStats(proc);
 	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
+	// reset process
+	reinitProcessFields(proc, timestamp);
+	createAndEnqueueEvent(event_q, proc, timestamp, 0); // type 0 is create
 }
+
+/*
+ *
+ */
+void reinitProcessFields(Process* proc, int timestamp) {
+	proc->actual_execTime = randomExecTime(proc->avg_execTime, 0);
+	proc->executing = 0; 
+	updateTimeRunSoFar(proc, timestamp, 0);
+	proc->start_firstPhase = -1; 
+	proc->start_finalPhase = -1; 
+	proc->end_firstPhase = -1; 
+	proc->end_finalPhase = -1;
+}
+
 
 /*
  *
@@ -437,7 +464,7 @@ void acquireResources() {
 /*
  *
  */
-void handleDeadlock(PQueue_STRUCT* event_q) {
+void handleDeadlock(PQueue_STRUCT* event_q, int timestamp) {
 	int i;
 	setNumPrcRes(NUM_PROCS, NUM_RES);
 	for (i = 0; i < NUM_PROCS; i++) {
@@ -454,7 +481,7 @@ void handleDeadlock(PQueue_STRUCT* event_q) {
 		for (i = 1; i < NUM_PROCS; i++) {
 			greediest = sumProcCurrUse(greediest) > sumProcCurrUse(PROCESSES[i]) ? greediest : PROCESSES[i];
 		}
-		kill(greediest, event_q);
+		kill(greediest, event_q, timestamp);
 	}
 }
 
@@ -497,6 +524,27 @@ int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 	return c->time - curr_time;
 }
 
+
+void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom) {
+	// called from is binary. case 0 --> called because process killed; case 1 --> called when first phase ended
+	if(calledFrom = 1)
+		proc->timeRunSoFar += end_firstPhase - start_firstPhase; 
+	else {
+		if(proc->executing) {
+			int t;
+			if(proc->start_firstPhase > -1) { 		// first phase has begun
+				if(proc->end_firstPhase == -1) { 	// ... and first phase has not ended
+					t = timestamp - start_firstPhase;
+				} else { 							// ... and first phase has ended
+					if( proc->start_finalPhase > -1)// 			second phase has begun
+						t = timestamp - start_finalPhase;
+				}
+			}
+		}
+		proc->timeRunSoFar += t; 
+	}
+}
+	
 /*
  *
  */
@@ -537,22 +585,25 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 			if(proc->executing) {
 				if(system_time(c) - proc->startTime >= first_exec_phase) { // in first phase of execution-only need min resrc req which we now have!
 					// we were previously executing - consider this phase complete - update stats and reverse executing
-					proc->activeTime = system_time(c) - proc->startTime;
+					proc->end_firstPhase = system_time(c);
+					proc->timeRunSoFar = system_time(c) - proc->startTime;
 					proc->executing = 0;
-				if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->activeTime); }					
+					updateTimeRunSoFar(proc, system_time(c), 1);
+				if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->timeRunSoFar); }					
 				}
 			} else {
 				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
-				proc->startTime = system_time(c);
+				proc->start_firstPhase = system_time(c);
 				proc->executing = 1;
 				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its first phase - started at time %d", proc->id, proc->startTime); }
 			}
 			break; 
 		case 2: // we have full max claim req - begin final execution phase!
 			// execute final phase, enqueue termination event
+			proc->start_finalPhase = system_time(c);
 			proc->executing = 1;
-			createAndEnqueueEvent(event_q, proc, system_time(c)+(proc->actual_execTime - proc->activeTime), 1); // enqueue termination time for after final execution phase
-			if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->activeTime)); }
+			createAndEnqueueEvent(event_q, proc, system_time(c)+(proc->actual_execTime - proc->timeRunSoFar), 1); // enqueue termination time for after final execution phase
+			if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->timeRunSoFar)); }
 			break;
 		default:
 			printf("Failed; case type '%d' unknown.\n", currentCase);
@@ -560,7 +611,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 }
 
 /*
- *
+ * Return the sum of the max_claims that proc has on each resource.
  */
 int sumProcMaxClaims(Process* proc) {
 	int sum, i;
@@ -571,7 +622,7 @@ int sumProcMaxClaims(Process* proc) {
 }
 
 /*
- *
+ * Return the sum of the total number of instances of all resources that proc is currently holding.
  */
 int sumProcCurrUse(Process* proc) {
 	int sum, i;
