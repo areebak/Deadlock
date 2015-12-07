@@ -11,6 +11,7 @@
 #include "sim.h"
 #include "distribution.c"
 #include "qs/queue.h"
+#include "qs/pqueue.h"
 #include "bankers_algorithm.h"
 #include "qs/event.h"
 
@@ -85,7 +86,7 @@ void parse_args(int argc, char* argv[]);
 void read_input(char* file_name);
 void readResourceArray(); 
 void readProcessesArray(); 
-int  advance_time(ClockSim *c, PQueue_STRUCT *event_q);
+int  advance_time(ClockSim *c, PQueue_STRUCT* event_q);
 int  randomExecTime(int len, int lower_bound);
 int  system_time(ClockSim* c);
 void requestResources(Process* proc);
@@ -104,6 +105,7 @@ void kill_updateStats(Process* proc);
 void handleDeadlock(PQueue_STRUCT* event_q, int timestamp);
 void initProcessFields(Process* proc, int timestamp);
 void reinitProcessFields(Process* proc, int timestamp);
+void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom);
 
 // ********************************** MAIN ************************************
 
@@ -115,7 +117,6 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
-	initProgramStats(); 
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
@@ -340,7 +341,7 @@ void read_input(char* file_name) {
 }
 
 void initProcessFields(Process* proc, int timestamp) {
-	proc->timeRunSoFar_lastUpdatedAt = 0;
+	//proc->timeRunSoFar_lastUpdatedAt = 0;
 	proc->timeRunSoFar = 0;
 	proc->creationTime = timestamp;
 	proc->actual_execTime = randomExecTime(proc->avg_execTime, 0);
@@ -528,20 +529,20 @@ int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom) {
 	// called from is binary. case 0 --> called because process killed; case 1 --> called when first phase ended
 	if(calledFrom = 1)
-		proc->timeRunSoFar += end_firstPhase - start_firstPhase; 
+		proc->timeRunSoFar += proc->end_firstPhase - proc->start_firstPhase; 
 	else {
 		if(proc->executing) {
-			int t;
+			int t = 0;
 			if(proc->start_firstPhase > -1) { 		// first phase has begun
 				if(proc->end_firstPhase == -1) { 	// ... and first phase has not ended
-					t = timestamp - start_firstPhase;
+					t = timestamp - proc->start_firstPhase;
 				} else { 							// ... and first phase has ended
 					if( proc->start_finalPhase > -1)// 			second phase has begun
-						t = timestamp - start_finalPhase;
+						t = timestamp - proc->start_finalPhase;
 				}
-			}
+			} proc->timeRunSoFar += t; 
 		}
-		proc->timeRunSoFar += t; 
+		
 	}
 }
 	
@@ -583,10 +584,9 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 			break; 	// do nothing - we don't have our min resrc req to run!
 		case 1: // we have min resrc req but not full max claim req
 			if(proc->executing) {
-				if(system_time(c) - proc->startTime >= first_exec_phase) { // in first phase of execution-only need min resrc req which we now have!
+				if(system_time(c) - proc->start_firstPhase >= first_exec_phase) { // in first phase of execution-only need min resrc req which we now have!
 					// we were previously executing - consider this phase complete - update stats and reverse executing
 					proc->end_firstPhase = system_time(c);
-					proc->timeRunSoFar = system_time(c) - proc->startTime;
 					proc->executing = 0;
 					updateTimeRunSoFar(proc, system_time(c), 1);
 				if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->timeRunSoFar); }					
@@ -595,7 +595,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
 				proc->start_firstPhase = system_time(c);
 				proc->executing = 1;
-				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its first phase - started at time %d", proc->id, proc->startTime); }
+				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its first phase - started at time %d", proc->id, proc->start_firstPhase); }
 			}
 			break; 
 		case 2: // we have full max claim req - begin final execution phase!

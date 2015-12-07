@@ -3,6 +3,7 @@
 // Areeba Kamal
 
 #include "simStats.h"
+#include <stdlib.h>
 
 ProgramStats* initPS(int numProcs){
   ProgramStats* ps = (ProgramStats*)malloc(sizeof(ProgramStats)); 
