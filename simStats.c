@@ -29,20 +29,6 @@ void initPSFields(ProgramStats* ps, int numProcs) {
 	}
 }
 
-/*
-
-int numCreated_proc(ProgramStats* ps, int procID) {
-	return ps->numCreated[procID];
-}
-
-int numKills_proc(ProgramStats* ps, int procID) {
-	return ps->numKills[procID];
-}
-
-int numCompleted_proc(ProgramStats* ps, int procID) {
-	return ps->numCompleted[procID];
-}*/
-
 int	total_created(ProgramStats* ps) {
 	int i;
 	int total = 0; 
@@ -108,6 +94,5 @@ double ratio_executionToTurnaround(ProgramStats* ps) {
 
 double  thruput(ProgramStats* ps, int stop_time) {
 	int completed = total_completed(ps);
-	printf("completed is %d\n", completed);
 	return  (double) stop_time / completed; 
 }
