@@ -1,55 +1,54 @@
 // simStats.h
-// Thao Bach
 // Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal
 
 #ifndef SimSTATS_H
 #define SimSTATS_H
 
-#include "qs/pqueue.h"
+typedef struct ProgramStats {
+	int numProcs; 
+	int* numCreated;
+	int* numKills;
+	int* numCompleted;
+	int* total_turnaround;
+	int* total_execution;
+} ProgramStats;
 
-typedef struct QStats {
-	int fin_len_q;
-	int avg_len_q;
-	int sum_q_len;
-} QStats;
-
-typedef struct PQStats {
-	int fin_len_q;
-	int avg_len_q;
-	int sum_q_len;
-} PQStats;
-
-typedef struct ProcStats {
-	char* type;
-	int numCompleted;
-	int thruput;
-	int last_turn_time;
-	int long_turn_time;
-	int sum_turnaround;
-	int avg_turn_time;
-} ProcStats;
-
-typedef struct CPUStats {
-	int cpu;
-	int active_time;
-	int contxt_sw_time;
-	int idle_time;
-} CPUStats;
-
-int  lenQ(Queue_STRUCT* q);
-void addQ(QStats* qs, Queue_STRUCT* q);
-double  avgLenQ(QStats* qs, int len_time);
-int  lenPQ(PQueue_STRUCT* q);
-void addPQ(PQStats* qs, PQueue_STRUCT* q);
-double  avgLenPQ(PQStats* qs, int len_time);
-int  numCompleted(ProcStats* ps);
-double  thruput(ProcStats* ps, int stop_time);
-int  lastTurnTime(ProcStats* ps);
-int  longTurnTime(ProcStats* ps);
-int  avgTurnTime(ProcStats* ps);
-int  activeTime(CPUStats* cs);
-int  contxtSwTime(CPUStats* cs);
-int  idleTime(CPUStats* cs);
+// init program stats
+ProgramStats* 	initPS(int numProcs);
+void 			initPSFields(ProgramStats* ps, int numProcs);
+// process id specific stats
+int  			numCreated_proc(ProgramStats* ps, int procID);
+int  			numKills_proc(ProgramStats* ps, int procID);
+int  			numCompleted_proc(ProgramStats* ps, int procID);
+// total process stats
+int				total_created(ProgramStats* ps);
+int 			total_kills(ProgramStats* ps); 
+int 			total_completed(ProgramStats* ps); 
+// total process ratios
+double  		ratio_completedToCreated(ProgramStats* ps);
+double 			ratio_killedToCreated(ProgramStats* ps);
+// total time stats
+int  			total_turnaround(ProgramStats* ps);
+int  			total_execution(ProgramStats* ps);
+// total time ratios
+double  		ratio_turnaroundToexecution(ProgramStats* ps);
+double  		thruput(ProgramStats* ps, int stop_time);
 
 #endif
+
+
+/// notes to self
+
+// step 1: kill and create and enqueue are  two methods that need an additional parameter of type PS
+// edit - made program stats global!
+// step 2: 	in createAndEnqueue:
+// 				each time we create, 
+// 					++numCreated
+// 				each time we terminate
+// 					++ numCompleted
+// 					add systime-creationtime to total total_turnaround
+// 					add actual exec time to total_execution
+// step 3: 	in kill:
+// 				++numKills
+// step 4: write simStats.c methods now

@@ -37,6 +37,7 @@ float PARTIAL_EXEC;
 float PARTIAL_RESRC;
 Resource** RESRCS;
 Process**  PROCESSES;
+ProgramStats* ps; 
 
 /*
  * Configure parameters.
@@ -98,6 +99,8 @@ void acquireResources();
 void kill(Process* proc, PQueue_STRUCT* event_q);
 PQueue_STRUCT* initEventQueue();
 void handleDeadlock(PQueue_STRUCT* event_q);
+void event_updateStats(Process* proc, int timestamp, int type);
+void kill_updateStats(Process* proc);
 
 // ********************************** MAIN ************************************
 
@@ -109,9 +112,10 @@ int main(int argc, char* argv[]) {
 	srand(time(NULL)); // required for randomization methods to work
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
+	initProgramStats(); 
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
-
+	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
 
 	// test(); --> tests for bankers alg
 	// exit(0); 
@@ -154,6 +158,7 @@ int main(int argc, char* argv[]) {
 // *************************** FUNCTION DEFINITIONS ***************************
 int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
 int  system_time(ClockSim* c) { return c->time; }
+
 
 /*
  *
@@ -404,6 +409,7 @@ void kill(Process* proc, PQueue_STRUCT* event_q) {
 	int z; // release all resources
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
+	kill_updateStats(proc);
 	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
 }
 
@@ -457,6 +463,26 @@ void handleDeadlock(PQueue_STRUCT* event_q) {
  */
 void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp, int type) {
 	enqueuePQ(event_q, createEvent(proc, timestamp, type));
+	event_updateStats(proc, timestamp, type); 
+}
+
+void event_updateStats(Process* proc, int timestamp, int type) {
+	// helper vars
+	int id = proc->id; 
+	int proc_turnaroundTime = timestamp - proc->creationTime; 
+	int proc_executionTime = proc->actual_execTime;
+	// check type of event and update stats accordingly
+	if(type) {	// This is a termination event
+		ps->numCompleted[id]++;	// increment processes completed for this id
+		ps->total_turnaround[id] += proc_turnaroundTime; // add turnaroundtime for this id
+		ps->total_execution[id] += proc_executionTime; // add executiontime for this id
+	} else { 	// This is a creation event
+		ps->numCreated[id]++;	// increment processes created for this id
+	}
+}
+
+void kill_updateStats(Process* proc) {
+	ps->numKills[proc->id]++; 
 }
 
 /*
