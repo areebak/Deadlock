@@ -4,6 +4,7 @@
 
 #include "simStats.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 ProgramStats* initPS(int numProcs){
   ProgramStats* ps = (ProgramStats*)malloc(sizeof(ProgramStats)); 
@@ -106,6 +107,7 @@ double ratio_executionToTurnaround(ProgramStats* ps) {
 }
 
 double  thruput(ProgramStats* ps, int stop_time) {
-	double completed = (double) (total_completed(ps));
-	return completed / stop_time; 
+	int completed = total_completed(ps);
+	printf("completed is %d\n", completed);
+	return  (double) stop_time / completed; 
 }

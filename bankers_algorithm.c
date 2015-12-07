@@ -256,13 +256,13 @@ int runprocesses() {
 			}
 		}
 
-		// if(safe) {
-		// 	printf("Safe state found\n");
-		// 	printSafeSeq(); 
-		// } else {
-		// 	printf("Safe state not found\n");
-		// 	break;
-		// }
+		if(safe) {
+			printf("Safe state found\n");
+			//printSafeSeq(); 
+		} else {
+			printf("Safe state not found\n");
+			break;
+		}
 	}
 
 	return safe;
