@@ -119,12 +119,9 @@ int main(int argc, char* argv[]) {
 	parse_args(argc, argv); // read and set command-line parameters
 	read_input(FILE_NAME); // read input file and configure simulation
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
+	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
-	ps = initPS(NUM_PROCS);  // INIT program stats struct (global)
-
-	// test(); --> tests for bankers alg
-	// exit(0); 
 	// ***************************** INIT STATS *******************************
 
 	// *************************** RUN SIMULATION *****************************
@@ -134,7 +131,6 @@ int main(int argc, char* argv[]) {
 		if (ENABLE_VERBOSE) { printf("Event queue: Size %d\n", getSizePQ(event_q)); printPQ(event_q); }
 		if (getSizePQ(event_q)) {
 			Event* ev = dequeuePQ(event_q)->event; // take next event from event Queue
-			// if (ENABLE_VERBOSE) { printf("Handling event "); eventString(ev); printf("\n"); }
 			switch(ev->type) {
 				case 0: // process created
 					requestResources(ev->proc);
@@ -167,7 +163,6 @@ int main(int argc, char* argv[]) {
 // *************************** FUNCTION DEFINITIONS ***************************
 int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, lower_bound); }
 int  system_time(ClockSim* c) { return c->time; }
-
 
 /*
  *
