@@ -494,13 +494,13 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 	else if(curr_resrc_status >= max_resrc_req)
 		currentCase = 2; 
 
-	if(ENABLE_VERBOSE) { "Case %d has been set", currentCase; }
+	if(ENABLE_VERBOSE) { printf("Case %d has been set", currentCase); }
 
 	/* DETERMINE BEHAVIOR BASED ON CASE */
 
 	switch(currentCase) { 
 		case 0: // we do not have min resrc req
-			if(ENABLE_VERBOSE) { "Process with id %d has insufficient resources to execute its first phase at time %d", proc->id, system_time(c); }
+			if(ENABLE_VERBOSE) { printf("Process with id %d has insufficient resources to execute its first phase at time %d", proc->id, system_time(c)); }
 			break; 	// do nothing - we don't have our min resrc req to run!
 		case 1: // we have min resrc req but not full max claim req
 			if(proc->executing) {
@@ -508,13 +508,13 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 					// we were previously executing - consider this phase complete - update stats and reverse executing
 					proc->activeTime = system_time(c) - proc->startTime;
 					proc->executing = 0;
-				if(ENABLE_VERBOSE) { "Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->activeTime; }					
+				if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d", proc->id, proc->activeTime); }					
 				}
 			} else {
 				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
 				proc->startTime = system_time(c);
 				proc->executing = 1;
-				if(ENABLE_VERBOSE) { "Process with id %d is executing its first phase - started at time %d", proc->id, proc->startTime; }
+				if(ENABLE_VERBOSE) { printf("Process with id %d is executing its first phase - started at time %d", proc->id, proc->startTime); }
 			}
 			break; 
 		case 2: // we have full max claim req - begin final execution phase!
@@ -523,7 +523,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 			int i; 
 			for(i = 0; i < NUM_RES; i++)
 				createAndEnqueueEvent(event_q, proc, RESRCS[i], system_time(c)+(proc->actual_execTime - proc->activeTime), 1); // enqueue termination time for after final execution phase
-			if(ENABLE_VERBOSE) { "Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->activeTime); }
+			if(ENABLE_VERBOSE) { printf("Process with id %d is executing its final phase - will be terminated at time %d", proc->id, system_time(c)+(proc->actual_execTime - proc->activeTime)); }
 			break;
 		default:
 			printf("Failed; case type '%d' unknown.\n", currentCase);
