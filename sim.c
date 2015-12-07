@@ -113,8 +113,8 @@ int main(int argc, char* argv[]) {
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
 
-	test(); 
-	exit(0);
+	// test(); --> tests for bankers alg
+	// exit(0); 
 	// ***************************** INIT STATS *******************************
 
 	// *************************** RUN SIMULATION *****************************
