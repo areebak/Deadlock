@@ -458,10 +458,10 @@ void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 	int z; // release all resources
 	for(z = 0; z < NUM_RES; z++)
 		if (proc->curr_use[z]) { releaseResource(proc, RESRCS[z]); }
-	kill_updateStats(proc);
 	// createAndEnqueueEvent(event_q, proc, ); <-- NECESSARY BUT WRONG
 	// reset process
 	reinitProcessFields(proc, timestamp);
+	kill_updateStats(proc);
 	createAndEnqueueEvent(event_q, proc, timestamp, 0); // type 0 is create
 }
 
