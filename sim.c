@@ -112,6 +112,9 @@ int main(int argc, char* argv[]) {
 	ClockSim c = clockSim; // <<<<<<<<<<<<<<<<<<<<<< INIT clock
 	PQueue_STRUCT* event_q = initEventQueue(); // << INIT event queue
 
+
+	test(); 
+	exit(0);
 	// ***************************** INIT STATS *******************************
 
 	// *************************** RUN SIMULATION *****************************
