@@ -14,20 +14,20 @@ typedef struct ProgramStats {
 	int* total_execution;
 } ProgramStats;
 
-// init program stats
+/* init program stats */
 ProgramStats* 	initPS(int numProcs);
 void 			initPSFields(ProgramStats* ps, int numProcs);
-// total process stats
+/* total process stats */
 int				total_created(ProgramStats* ps);
 int 			total_kills(ProgramStats* ps); 
 int 			total_completed(ProgramStats* ps); 
-// total process ratios
+/* total process ratios */
 double  		ratio_completedToCreated(ProgramStats* ps);
 double 			ratio_killedToCreated(ProgramStats* ps);
-// total time stats
+/* total time stats */
 int  			total_turnaround(ProgramStats* ps);
 int  			total_execution(ProgramStats* ps);
-// total time ratios
+/* total time ratios */
 double  		ratio_executionToTurnaround(ProgramStats* ps);
 double  		thruput(ProgramStats* ps, int stop_time);
 

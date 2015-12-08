@@ -1,7 +1,6 @@
 // distribution.c
-// Thao Bach
 // Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal
 // Adapted from Ashley DeFlumere
 
 #include <stdio.h>

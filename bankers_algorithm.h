@@ -1,8 +1,6 @@
-/*
-* bankers_algorithm.h
-* Areeba Kamal and Helena Kleinschmidt
-* CS 322 Final Project
-*/ 
+// bankers_algorithm.h
+// Helena Kleinschmidt
+// Areeba Kamal
 
 extern int setNumPrcRes(int setPrc, int setRes);
 

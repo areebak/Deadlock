@@ -1,7 +1,6 @@
 // clockSim.h
-// Thao Bach
-// Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal & Helena Kleinschmidt
+// Taken from CPUscheduler/sim.c (Bach, Kleinschmidt, Zhumabekova)
 
 #ifndef CLOCKSIM_H
 #define CLOCKSIM_H

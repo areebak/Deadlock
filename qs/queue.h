@@ -1,6 +1,6 @@
 // queue.h
 // Areeba Kamal & Helena Kleinschmidt
-// Adapted from CPUscheduler/pqq/queue.h (Bach, Kleinschmidt, Zhumabekova)
+// Taken from CPUscheduler/pqq/queue.h (Bach, Kleinschmidt, Zhumabekova)
 
 #ifndef Q_H
 #define Q_H

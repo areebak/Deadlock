@@ -182,7 +182,7 @@ int  randomExecTime(int len, int lower_bound) { return exponential_rand(len, low
 int  system_time(ClockSim* c) { return c->time; }
 
 /*
- *
+ * Enqueue process in the request queues of all the resources on which it has claims.
  */
 void requestResources(Process* proc) {
 	int i;
@@ -368,7 +368,7 @@ void read_input(char* file_name) {
 }
 
 /*
- *
+ * Initialize process during creation.
  */
 void initProcessFields(Process* proc, int timestamp) {
 	proc->terminationEnqueued = 0; 
@@ -384,7 +384,7 @@ void initProcessFields(Process* proc, int timestamp) {
 
 
 /*
- *
+ * Print out resources in the system in string form.
  */
 void readResourceArray() {
 	int a; 
@@ -393,7 +393,7 @@ void readResourceArray() {
 }
 
 /*
- *
+ * Print out processes in the system in string form.
  */
 void readProcessesArray() {
 	int b, c; 
@@ -405,7 +405,7 @@ void readProcessesArray() {
 }
 
 /*
- *
+ * Initalize the event queue with creation events for all processes initially in the system.
  */
 PQueue_STRUCT* initEventQueue() {
 	PQueue_STRUCT* event_q = initPQ();
@@ -416,7 +416,7 @@ PQueue_STRUCT* initEventQueue() {
 }
 
 /*
- *
+ * Process proc claims how_many instances of Resource res, assuming that how_many are available.
  */
 void claimResource(Process* proc, Resource* res, int how_many) { 
 	res->available -= how_many;
@@ -427,7 +427,7 @@ void claimResource(Process* proc, Resource* res, int how_many) {
 }
 
 /*
- *
+ * Process proc releases all its holds on instances of Resource res.
  */
 void releaseResource(Process* proc, Resource* res) {
 	int num_relinq = proc->curr_use[res->type];
@@ -437,7 +437,7 @@ void releaseResource(Process* proc, Resource* res) {
 }
 
 /*
- *
+ * Process proc is killed, meaning it releases all its holds on resources and an event is generated to restart the process.
  */
 void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 	if (ENABLE_VERBOSE) { printf("Killing process %d...\n", proc->id); }
@@ -451,7 +451,7 @@ void kill(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 }
 
 /*
- *
+ * Process proc terminates naturally, and enqueues a creation event for another process of this type.
  */
 void terminate(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 		int z; // release all resources
@@ -463,7 +463,7 @@ void terminate(Process* proc, PQueue_STRUCT* event_q, int timestamp) {
 }
 
 /*
- *
+ * Re-initialize process after killing.
  */
 void reinitProcessFields(Process* proc, int timestamp) {
 	proc->terminationEnqueued = 0;
@@ -478,7 +478,9 @@ void reinitProcessFields(Process* proc, int timestamp) {
 
 
 /*
- *
+ * For each resource in the system, consider the process at the head of its request queue,
+ * and grant as many instances of the resource to the process as possible. If max_claims
+ * can be granted, dequeue the process from the request queue.
  */
 void acquireResources() {
 	int i;
@@ -499,7 +501,7 @@ void acquireResources() {
 }
 
 /*
- *
+ * Run the Banker's algorithm to check for a safe state; if not safe, kill the process holding the most resources.
  */
 void handleDeadlock(PQueue_STRUCT* event_q, int timestamp) {
 	int i;
@@ -533,6 +535,9 @@ void createAndEnqueueEvent(PQueue_STRUCT* event_q, Process* proc, int timestamp,
 	event_updateStats(proc, timestamp, type); 
 }
 
+/*
+ * Update statistics to do with creating and terminating processes.
+ */
 void event_updateStats(Process* proc, int timestamp, int type) {
 	// helper vars
 	int id = proc->id; 
@@ -548,6 +553,9 @@ void event_updateStats(Process* proc, int timestamp, int type) {
 	}
 }
 
+/*
+ * Update statistics to do with killing Process proc.
+ */
 void kill_updateStats(Process* proc) {
 	ps->numKills[proc->id]++; 
 }
@@ -569,7 +577,7 @@ int advance_time(ClockSim *c, PQueue_STRUCT *event_q) {
 }
 
 /*
- *
+ * Update the timeRunSoFar trait of Process proc, so we know how long it has spent executing in the system.
  */
 void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom) {
 	// called from is binary. case 0 --> called because process killed; case 1 --> called when first phase ended
@@ -592,7 +600,8 @@ void updateTimeRunSoFar(Process* proc, int timestamp, int calledFrom) {
 }
 	
 /*
- *
+ * Evaluate which phase of progress Process proc is currently in, and either wait or exxecute
+ * accordingly; in the latter case, it may also be necessary to generate the process' termination event.
  */
 void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 
@@ -684,7 +693,7 @@ int sumProcCurrUse(Process* proc) {
 }
 
 /*
- *
+ * Return the number of resources that Process proc must hold in order to be considered "executing".
  */
 int getPartialResrc(Process* proc) {
 	// figure out partial resource status
