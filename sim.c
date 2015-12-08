@@ -15,7 +15,7 @@
 #include "bankers_algorithm.h"
 #include "qs/event.h"
 
-#define DEFAULT_INPUT_FILE "input/input.txt"
+#define DEFAULT_INPUT_FILE "input/input1.txt"
 #define DEFAULT_SIM_TIME 500
 #define MAX_LENGTH_PT 100
 #define DEFAULT_PARTIAL_EXEC 0.5
@@ -644,7 +644,7 @@ void evalProcProgress(PQueue_STRUCT* event_q, Process* proc, ClockSim* c) {
 					updateTimeRunSoFar(proc, system_time(c), 1);
 					if(ENABLE_VERBOSE) { printf("Process with id %d has finished executing its first phase - active time updated to %d\n", proc->id, proc->timeRunSoFar); }					
 				}
-				printf("WE ARE IN A MYSTERIOUS PLACE\n");
+				//printf("WE ARE IN A MYSTERIOUS PLACE\n");
 			} else {
 				// we were not executing, but now we have our min resrc req so we can - consider this phase has begun - update stats and reverse executing
 				proc->start_firstPhase = system_time(c);
