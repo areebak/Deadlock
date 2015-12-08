@@ -1,7 +1,6 @@
 // sim.h
-// Thao Bach
-// Helena Kleinschmidt
-// Aida Zhumabekova
+// Areeba Kamal & Helena Kleinschmidt
+// Taken from CPUscheduler/sim.c (Bach, Kleinschmidt, Zhumabekova)
 
 #ifndef SIM_H
 #define SIM_H
@@ -18,3 +17,4 @@ extern int DISPLAY_BATCH; //display parseable batch output
 extern int DISPLAY_HELP;
 
 #endif
+

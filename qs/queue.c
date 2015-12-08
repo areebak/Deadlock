@@ -1,6 +1,6 @@
 // queue.c
 // Areeba Kamal & Helena Kleinschmidt
-// Adapted from CPUscheduler/pqq/queue.c (Bach, Kleinschmidt, Zhumabekova)
+// Taken from CPUscheduler/pqq/queue.c (Bach, Kleinschmidt, Zhumabekova)
 
 #include "queue.h"
 

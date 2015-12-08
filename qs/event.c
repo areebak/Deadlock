@@ -1,6 +1,6 @@
 // event.c
-// Areeba Kamal
 // Helena Kleinschmidt
+// Areeba Kamal
 
 #include "event.h"
 

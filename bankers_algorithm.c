@@ -1,8 +1,6 @@
-/*
-* bankers_algorithm.c
-* Areeba Kamal and Helena Kleinschmidt
-* CS 322 Final Project
-*/ 
+// bankers_algorithm.c
+// Helena Kleinschmidt
+// Areeba Kamal
 
 #include <stdio.h>
 #include <stdlib.h>
